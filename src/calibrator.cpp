@@ -29,10 +29,15 @@ void Calibrator::Estimate(const std::vector<Points2D> &in_img_points,
   }
 
   cv::Mat R, T;
-  cv::Matx33f cameraMatrix = ToCvMat3x3<float>(K_);
-  cv::Mat distCoeffs = ToCvMat<float>(dist_);
+  cv::Matx33f camera_matrix = ToCvMat3x3<float>(K_);
+  cv::Mat dist_coeffs = ToCvMat<float>(dist_);
   // cv::calibrateCamera(world_points, image_points, cv::Size(width_, height_),
-  // cameraMatrix, distCoeffs, rvecs, tvecs);
+  // camera_matrix, dist_coeffs, rvecs, tvecs);
   cv::calibrateCamera(world_points, image_points, cv::Size(width_, height_),
-                      cameraMatrix, distCoeffs, R, T);
+                      camera_matrix, dist_coeffs, R, T);
+
+  K_ = ToEigen<decltype(K_), float>(camera_matrix);
+
+  // dist_coeffs is a double matrix
+  dist_ = ToEigen<decltype(dist_), double>(dist_coeffs);
 }

@@ -17,7 +17,7 @@ class DataGeneratorFixture {
     DynamicVector dist(5);
     dist << -4.0e-2f, 5e-4f, 1.0e-3f, 2.0e-5f, -3e-4f;
     generator.SetDistortion(dist);
-    generator.SetNoiseInPixels(2);
+    generator.SetNoiseInPixels(0.5);
   }
 
  protected:
@@ -32,20 +32,31 @@ TEST_CASE_METHOD(DataGeneratorFixture, "data is generated", "[generator]") {
   REQUIRE(p.image.size() == num);
 }
 
+TEST_CASE_METHOD(DataGeneratorFixture, "planar data is generated",
+                 "[generator]") {
+  int num = 100;
+  const auto p = generator.GetDistortedPointsPlanar(num);
+  REQUIRE(p.image.size() == p.world.size());
+  REQUIRE(p.image.size() == num);
+}
+
 TEST_CASE_METHOD(DataGeneratorFixture, "opencv estimation works",
                  "[generator,calibrator]") {
   int num_p = 100;
-  int num_cams = 3;
+  int num_cams = 5;
 
   std::vector<Points2D> img_points;
   std::vector<Points3D> world_points;
 
   for (int i = 0; i < num_cams; ++i) {
-    const auto p = generator.GetDistortedPoints(num_p);
+    const auto p = generator.GetDistortedPointsPlanar(num_p);
     img_points.push_back(std::move(p.image));
     REQUIRE(p.image.size() == p.world.size());
     world_points.push_back(std::move(p.world));
   }
 
   calibrator.Estimate(img_points, world_points);
+
+  std::cout << calibrator.GetK() << std::endl;
+  std::cout << calibrator.GetDistortion() << std::endl;
 }

@@ -8,8 +8,11 @@ class Calibrator {
  public:
   Calibrator(const int img_width, const int img_height);
 
-  void Estimate(const std::vector<Points2D> &img_points,
-                const std::vector<Points3D> &world_points);
+  void Estimate(const std::vector<Points2D> &in_img_points,
+                const std::vector<Points3D> &in_world_points);
+
+  Matrix3 GetK() const { return K_; }
+  DynamicVector GetDistortion() const { return dist_; }
 
  private:
   int width_;

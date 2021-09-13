@@ -47,4 +47,28 @@ cv::Mat ToCvMat(const EigenMatrix& in) {
   return out;
 }
 
+template <typename EigenMatrix, typename T>
+EigenMatrix ToEigen(const cv::Mat& in) {
+  const auto rows = in.rows;
+  const auto cols = in.cols;
+  EigenMatrix out(rows, cols);
+  for (int i = 0; i < rows; ++i) {
+    for (int j = 0; j < cols; ++j) {
+      out(i, j) = static_cast<EigenMatrix::Scalar>(in.at<T>(i, j));
+    }
+  }
+  return out;
+}
+
+template <typename EigenMatrix, typename T>
+EigenMatrix ToEigen(const cv::Matx<T, 3, 3>& in) {
+  EigenMatrix out(3, 3);
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      out(i, j) = in(i, j);
+    }
+  }
+  return out;
+}
+
 }  // namespace calibrator

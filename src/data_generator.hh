@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <random>
 #include "types.hh"
 
@@ -21,6 +22,15 @@ class DataGenerator {
   void SetDistortion(const DynamicVector& dist);
   void SetNoiseInPixels(const float noise);
   GeneratedData GetDistortedPoints(const int num_p = 100);
+  GeneratedData GetDistortedPointsPlanar(const int num_p = 100);
+
+ private:
+  Point3D GetRandomPixel();
+  Point3D GetRandom3DPointVisibleToCamera(const Matrix3& K_inv);
+
+  // Create three points which are at the corners of the
+  // camera frustrum. This will define a plane.
+  Plane GetRandomPlane(const Matrix3& K_inv);
 
  private:
   int width_{0};

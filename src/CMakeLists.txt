@@ -6,6 +6,7 @@ find_package(Catch2 REQUIRED)
 add_library(calibrator
     calibrator.cpp calibrator.hh
     data_generator.cpp data_generator.hh
+    geometry.cpp geometry.hh
     )
 target_link_libraries(calibrator
     PUBLIC 
