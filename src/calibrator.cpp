@@ -3,14 +3,16 @@
 #include <iostream>
 #include <opencv2/calib3d.hpp>
 #include "convert.hh"
+#include "geometry.hh"
 
 using namespace calibrator;
 
 Calibrator::Calibrator(const int img_width, const int img_height)
     : width_(img_width), height_(img_height) {}
 
-void Calibrator::Estimate(const std::vector<Points2D> &in_img_points,
+void Calibrator::EstimateOpenCv(const std::vector<Points2D> &in_img_points,
                           const std::vector<Points3D> &in_world_points) {
+  assert(in_img_points.size() == in_world_points.size());
   std::vector<std::vector<cv::Point2f>> image_points;
   std::vector<std::vector<cv::Point3f>> world_points;
   for (const auto &points : in_img_points) {
@@ -40,4 +42,16 @@ void Calibrator::Estimate(const std::vector<Points2D> &in_img_points,
 
   // dist_coeffs is a double matrix
   dist_ = ToEigen<decltype(dist_), double>(dist_coeffs);
+}
+
+void Calibrator::Estimate(const std::vector<Points2D> &in_img_points,
+                          const std::vector<Points3D> &in_world_points) {
+  assert(in_img_points.size() == in_world_points.size());
+  const auto num_imgs = in_img_points.size();
+
+  std::vector<Matrix3> Hs;
+  for (size_t i = 0; i < num_imgs; ++i) {
+    Hs.push_back(EstimateHomography(in_world_points[i], in_img_points[i]));
+  }
+  K_ = EstimateKFromHomographies(Hs);
 }

@@ -27,4 +27,10 @@ Point3D ProjectToPlane(
     const Plane& plane, const Point3D& p,
     const std::optional<Point3D>& projection_direction = std::nullopt);
 
+Matrix3 EstimateHomography(const Points2D& p1, const Points2D& p2);
+Matrix3 EstimateHomography(const Points2D& p1, const Points3D& p2);
+Matrix3 EstimateHomography(const Points3D& p1, const Points2D& p2);
+
+Matrix3 EstimateKFromHomographies(const std::vector<Matrix3>& Hs);
+
 }  // namespace calibrator
