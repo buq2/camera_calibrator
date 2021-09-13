@@ -9,7 +9,7 @@ class Calibrator {
   Calibrator(const int img_width, const int img_height);
 
   void EstimateOpenCv(const std::vector<Points2D> &in_img_points,
-                const std::vector<Points3D> &in_world_points);
+                      const std::vector<Points3D> &in_world_points);
 
   void Estimate(const std::vector<Points2D> &in_img_points,
                 const std::vector<Points3D> &in_world_points);

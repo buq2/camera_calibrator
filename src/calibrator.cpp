@@ -11,7 +11,7 @@ Calibrator::Calibrator(const int img_width, const int img_height)
     : width_(img_width), height_(img_height) {}
 
 void Calibrator::EstimateOpenCv(const std::vector<Points2D> &in_img_points,
-                          const std::vector<Points3D> &in_world_points) {
+                                const std::vector<Points3D> &in_world_points) {
   assert(in_img_points.size() == in_world_points.size());
   std::vector<std::vector<cv::Point2f>> image_points;
   std::vector<std::vector<cv::Point3f>> world_points;
@@ -54,4 +54,13 @@ void Calibrator::Estimate(const std::vector<Points2D> &in_img_points,
     Hs.push_back(EstimateHomography(in_world_points[i], in_img_points[i]));
   }
   K_ = EstimateKFromHomographies(Hs);
+
+  std::vector<Quaternion> qs;
+  std::vector<Point3D> ts;
+  const auto K_inv = K_.inverse();
+  for (const auto &H : Hs) {
+    const auto &[R, t] = RecoverExtrinsics(K_inv, H);
+    qs.emplace_back(R);
+    ts.push_back(t);
+  }
 }

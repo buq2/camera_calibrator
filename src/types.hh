@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
 #include <Eigen/StdVector>
 #include <vector>
 
@@ -13,5 +14,6 @@ using Points3D = std::vector<Point3D, Eigen::aligned_allocator<Point3D> >;
 using Matrix3 = Eigen::Matrix3f;
 using DynamicVector = Eigen::VectorXf;
 using Plane = Eigen::Vector4f;
+using Quaternion = Eigen::Quaternionf;
 
 }  // namespace calibrator

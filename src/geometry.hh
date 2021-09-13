@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <tuple>
 #include "types.hh"
 
 namespace calibrator {
@@ -31,6 +32,17 @@ Matrix3 EstimateHomography(const Points2D& p1, const Points2D& p2);
 Matrix3 EstimateHomography(const Points2D& p1, const Points3D& p2);
 Matrix3 EstimateHomography(const Points3D& p1, const Points2D& p2);
 
+// Homographies should be ones which transform x=HX where X is the world
+// points and x are the image points.
 Matrix3 EstimateKFromHomographies(const std::vector<Matrix3>& Hs);
+
+// \parma[in] K_inv Inverse of calibration matrix
+// \param[in] H Homography which transforms x=HX where X is the world
+//  points and x are the image points.
+std::tuple<Matrix3, Point3D> RecoverExtrinsics(const Matrix3& K_inv,
+                                               const Matrix3& H);
+
+/// Fix estimated rotation matrix which does not fill all requirements for one
+Matrix3 FixRotationMatrix(const Matrix3& R);
 
 }  // namespace calibrator
