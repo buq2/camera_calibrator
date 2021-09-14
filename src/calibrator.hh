@@ -14,6 +14,10 @@ class Calibrator {
   void Estimate(const std::vector<Points2D> &in_img_points,
                 const std::vector<Points3D> &in_world_points);
 
+  void Optimize(const std::vector<Points2D> &in_img_points,
+                const std::vector<Points3D> &in_world_points,
+                std::vector<Quaternion> &qs, std::vector<Point3D> &ts);
+
   Matrix3 GetK() const { return K_; }
   DynamicVector GetDistortion() const { return dist_; }
 
