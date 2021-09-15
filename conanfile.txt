@@ -3,6 +3,11 @@
     ceres-solver/[>=2.0]
     eigen/[>=3.3]
     catch2/[>2.0]
+
+    # For gui
+    imgui/1.84.2
+    sdl/[>2.0.0]
+    glew/[>2.0.0]
 [generators]
     cmake_find_package
 [options]
