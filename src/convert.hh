@@ -38,7 +38,7 @@ template <typename T, typename EigenMatrix>
 cv::Mat ToCvMat(const EigenMatrix& in) {
   const auto rows = static_cast<int>(in.rows());
   const auto cols = static_cast<int>(in.cols());
-  cv::Mat out(rows, cols, cv::DataType<float>::type);
+  cv::Mat out(rows, cols, cv::DataType<T>::type);
   for (int i = 0; i < rows; ++i) {
     for (int j = 0; j < cols; ++j) {
       out.at<T>(i, j) = in(i, j);
