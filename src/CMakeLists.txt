@@ -44,4 +44,7 @@ TARGET_LINK_LIBRARIES(test_gui
     SDL2::SDL2
     GLEW::GLEW
     imgui::imgui
+    opencv::core  
+    opencv::imgproc
+    opencv::highgui
     )

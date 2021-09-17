@@ -56,6 +56,15 @@ void Texture::DestroyTexture() {
   }
 }
 
+void Texture::SetTexture(const cv::Mat& in) {
+  const auto depth = in.type() & CV_MAT_DEPTH_MASK;
+  const auto chans = 1 + (in.type() >> CV_CN_SHIFT);
+  assert(depth == CV_8U);
+  assert(chans == 3);
+
+  SetTexture(in.cols, in.rows, in.data);
+}
+
 void Texture::SetTexture(const int image_width, const int image_height,
                          const unsigned char* image_data) {
   if (!texture_created_) {
@@ -83,14 +92,24 @@ void Texture::SetTexture(const int image_width, const int image_height,
                GL_UNSIGNED_BYTE, image_data);
 }
 
+Image::Image() : prev_mouse_wheel_(ImGui::GetIO().MouseWheel) {}
+
+void Image::SetImage(const int image_width, const int image_height,
+                     const unsigned char* image_data) {
+  texture_.SetTexture(image_width, image_height, image_data);
+}
+
+void Image::SetImage(const cv::Mat& in) { texture_.SetTexture(in); }
+
+void Image::Display() { texture_.Display(); }
+
 class GuiWindowPrivate {
  public:
   SDL_Window* window;
   SDL_GLContext gl_context;
 };
 
-GuiWindow::GuiWindow(const std::string& title)
-    : p_(new GuiWindowPrivate), title_(title) {}
+GuiWindow::GuiWindow() : p_(new GuiWindowPrivate) {}
 
 GuiWindow::~GuiWindow() {
   delete p_;
@@ -132,10 +151,8 @@ bool GuiWindow::Initialize() {
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
   SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-  // SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL |
-  // SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-  SDL_WindowFlags window_flags =
-      (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
+  SDL_WindowFlags window_flags = (SDL_WindowFlags)(
+      SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE);
   p_->window =
       SDL_CreateWindow(title_.c_str(), SDL_WINDOWPOS_CENTERED,
                        SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
@@ -168,9 +185,10 @@ bool GuiWindow::Initialize() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
-  // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable
-  // Keyboard Controls io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; //
-  // Enable Gamepad Controls
+
+  // Allow movement of windows only from title bar. This way we can use
+  // mouse drag etc for other purposes
+  io.ConfigWindowsMoveFromTitleBarOnly = true;
 
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
@@ -224,22 +242,10 @@ bool GuiWindow::StartDraw() {
   // Start the Dear ImGui frame
   ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplSDL2_NewFrame(p_->window);
-  ImGui::NewFrame();
-  ImGui::Begin(title_.c_str());
   return done;
 }
 
 void GuiWindow::EndDraw() {
-  ImVec2 win_size;
-  if (auto_resize_) {
-    // Auto size
-    ImGui::SetWindowPos(ImVec2(0, 0));
-    ImGui::SetWindowSize(ImVec2(0, 0));
-    win_size = ImGui::GetWindowSize();
-  }
-
-  ImGui::End();
-
   // Rendering
   ImGui::Render();
   ImGuiIO& io = ImGui::GetIO();
@@ -248,12 +254,4 @@ void GuiWindow::EndDraw() {
   glClear(GL_COLOR_BUFFER_BIT);
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
   SDL_GL_SwapWindow(p_->window);
-
-  if (auto_resize_) {
-    int top, left, bottom, right;
-    SDL_GetWindowBordersSize(p_->window, &top, &left, &bottom, &right);
-    int w = std::max<int>(50, static_cast<int>(win_size.x) + left + right);
-    int h = std::max<int>(50, static_cast<int>(win_size.y) + top + bottom);
-    SDL_SetWindowSize(p_->window, w, h);
-  }
 }

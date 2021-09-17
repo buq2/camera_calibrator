@@ -103,8 +103,7 @@ struct ReprojectionError {
       : meas_x(meas_x), meas_y(meas_y) {}
   template <typename T>
   bool operator()(const T* const intr, const T* const q, const T* const t,
-                  const T* const X,
-                  T* residuals) const {
+                  const T* const X, T* residuals) const {
     // Get intrinsics
     const T& fx = intr[OFFSET_FX];
     const T& fy = intr[OFFSET_FY];

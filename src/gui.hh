@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <opencv2/core.hpp>
 #include <string>
 
 class GuiWindowPrivate;
@@ -15,6 +16,7 @@ class Texture {
 
   void SetTexture(const int image_width, const int image_height,
                   const unsigned char *image_data);
+  void SetTexture(const cv::Mat &in);
 
  private:
   void DestroyTexture();
@@ -26,16 +28,28 @@ class Texture {
   bool texture_created_{false};
 };
 
+class Image {
+ public:
+  Image();
+  void SetImage(const int image_width, const int image_height,
+                const unsigned char *image_data);
+  void SetImage(const cv::Mat &in);
+  void Display();
+
+ private:
+  float prev_mouse_wheel_;
+  Texture texture_;
+};
+
 class GuiWindow {
  public:
-  GuiWindow(const std::string &title = "Config");
+  GuiWindow();
   ~GuiWindow();
 
   bool Initialize();
   bool Draw(std::function<void()> fun);
   bool StartDraw();
   void EndDraw();
-  void SetAutoResize(const bool auto_resize) { auto_resize_ = auto_resize; };
 
  private:
   void Uninit();
@@ -44,6 +58,5 @@ class GuiWindow {
 
  private:
   GuiWindowPrivate *p_{nullptr};
-  std::string title_;
-  bool auto_resize_{true};
+  std::string title_{"Calibrator"};
 };
