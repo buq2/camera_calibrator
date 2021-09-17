@@ -6,18 +6,20 @@
 
 class GuiWindowPrivate;
 class TexturePrivate;
+class ImagePrivate;
 
 class Texture {
  public:
   Texture();
   ~Texture();
 
-  void Display();
+  void Display(const float scale = 1.0f);
 
   void SetTexture(const int image_width, const int image_height,
                   const unsigned char *image_data);
   void SetTexture(const cv::Mat &in);
-
+  int GetWidth() const {return width_;}
+  int GetHeight() const {return height_;}
  private:
   void DestroyTexture();
 
@@ -31,14 +33,20 @@ class Texture {
 class Image {
  public:
   Image();
+  ~Image();
   void SetImage(const int image_width, const int image_height,
                 const unsigned char *image_data);
   void SetImage(const cv::Mat &in);
   void Display();
+  float MousePosOnImageX();
+  float MousePosOnImageY();
+ private:
+  void CheckMouse();
 
  private:
-  float prev_mouse_wheel_;
+  ImagePrivate *p_{nullptr};
   Texture texture_;
+  float scale_{1.0f};
 };
 
 class GuiWindow {

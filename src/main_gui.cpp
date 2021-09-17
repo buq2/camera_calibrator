@@ -13,13 +13,13 @@ int main(int argc, char *argv[]) {
   cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 
   conf.Initialize();
-  Texture texture;
+  Image image;
   while (!conf.Draw([&]() {
     ImGui::NewFrame();
     ImGui::Begin("win", NULL, ImGuiWindowFlags_HorizontalScrollbar);
 
-    texture.SetTexture(img);
-    texture.Display();
+    image.SetImage(img);
+    image.Display();
 
     ImGui::End();
   })) {
