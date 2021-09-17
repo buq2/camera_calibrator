@@ -18,8 +18,9 @@ class Texture {
   void SetTexture(const int image_width, const int image_height,
                   const unsigned char *image_data);
   void SetTexture(const cv::Mat &in);
-  int GetWidth() const {return width_;}
-  int GetHeight() const {return height_;}
+  int GetWidth() const { return width_; }
+  int GetHeight() const { return height_; }
+
  private:
   void DestroyTexture();
 
@@ -40,6 +41,7 @@ class Image {
   void Display();
   float MousePosOnImageX();
   float MousePosOnImageY();
+
  private:
   void CheckMouse();
 

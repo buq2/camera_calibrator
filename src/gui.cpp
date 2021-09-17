@@ -50,7 +50,7 @@ void Texture::Display(const float scale) {
   if (texture_created_) {
     ImGui::Image((void*)(intptr_t)p_->image_texture_,
                  ImVec2(static_cast<float>(width_ * scale),
-                        static_cast<float>(height_ * scale)));    
+                        static_cast<float>(height_ * scale)));
   }
 }
 
@@ -99,7 +99,7 @@ void Texture::SetTexture(const int image_width, const int image_height,
 
 Image::Image() : p_(new ImagePrivate) {}
 
-Image::~Image() {delete p_;}
+Image::~Image() { delete p_; }
 
 void Image::SetImage(const int image_width, const int image_height,
                      const unsigned char* image_data) {
@@ -108,42 +108,36 @@ void Image::SetImage(const int image_width, const int image_height,
 
 void Image::SetImage(const cv::Mat& in) { texture_.SetTexture(in); }
 
-void Image::Display() { 
+void Image::Display() {
   ImVec2 screen_pos = ImGui::GetCursorScreenPos();
-  texture_.Display(scale_); 
-  p_->mouse_pos_on_image_.x = (ImGui::GetIO().MousePos.x - screen_pos.x) /
-              scale_;
-  p_->mouse_pos_on_image_.y = (ImGui::GetIO().MousePos.y - screen_pos.y) /
-            scale_;
+  texture_.Display(scale_);
+  p_->mouse_pos_on_image_.x =
+      (ImGui::GetIO().MousePos.x - screen_pos.x) / scale_;
+  p_->mouse_pos_on_image_.y =
+      (ImGui::GetIO().MousePos.y - screen_pos.y) / scale_;
   CheckMouse();
 }
 
-float Image::MousePosOnImageX()
-{
-  return p_->mouse_pos_on_image_.x;
-}
-float Image::MousePosOnImageY()
-{
-  return p_->mouse_pos_on_image_.y;
-}
+float Image::MousePosOnImageX() { return p_->mouse_pos_on_image_.x; }
+float Image::MousePosOnImageY() { return p_->mouse_pos_on_image_.y; }
 
-void Image::CheckMouse()
-{
-  const bool inside = MousePosOnImageX() >= 0.0f && MousePosOnImageX() < texture_.GetWidth() &&
-    MousePosOnImageY() >= 0.0f && MousePosOnImageY() < texture_.GetHeight();
+void Image::CheckMouse() {
+  const bool inside =
+      MousePosOnImageX() >= 0.0f && MousePosOnImageX() < texture_.GetWidth() &&
+      MousePosOnImageY() >= 0.0f && MousePosOnImageY() < texture_.GetHeight();
   if (!inside) {
     return;
   }
 
-  auto &io = ImGui::GetIO();
+  auto& io = ImGui::GetIO();
   auto wheel_delta = io.MouseWheel;
   if (io.MouseDoubleClicked[0]) {
     scale_ = 1.0f;
   } else if (io.KeyCtrl && wheel_delta != 0.0f) {
     if (wheel_delta > 0) {
-      scale_ *= wheel_delta*1.1f;
+      scale_ *= wheel_delta * 1.1f;
     } else {
-      scale_ /= std::abs(wheel_delta*1.1f);
+      scale_ /= std::abs(wheel_delta * 1.1f);
     }
   }
 }
