@@ -35,7 +35,14 @@ class TexturePrivate {
 
 class ImagePrivate {
  public:
-  ImVec2 mouse_pos_on_image_;
+  ImVec2 mouse_pos_on_image_{0.0f, 0.0f};
+
+  // Where mouse was clicked?
+  ImVec2 mouse_pos_on_image_prev_click_{0.0f, 0.0f}; // On image
+  ImVec2 mouse_pos_prev_click_{0.0f, 0.0f}; // In gui coordinates
+  bool mouse_dragging{false};
+  bool mouse_clicked_inside_{false};
+  ImVec2 scroll_when_drag_started{0.0f, 0.0f};
 };
 
 Texture::Texture() : p_(new TexturePrivate) {}
@@ -109,6 +116,7 @@ void Image::SetImage(const int image_width, const int image_height,
 void Image::SetImage(const cv::Mat& in) { texture_.SetTexture(in); }
 
 void Image::Display() {
+  // Screen pos needs to be taken before displaying the image
   ImVec2 screen_pos = ImGui::GetCursorScreenPos();
   texture_.Display(scale_);
   p_->mouse_pos_on_image_.x =
@@ -122,22 +130,56 @@ float Image::MousePosOnImageX() { return p_->mouse_pos_on_image_.x; }
 float Image::MousePosOnImageY() { return p_->mouse_pos_on_image_.y; }
 
 void Image::CheckMouse() {
+  auto& io = ImGui::GetIO();
   const bool inside =
       MousePosOnImageX() >= 0.0f && MousePosOnImageX() < texture_.GetWidth() &&
       MousePosOnImageY() >= 0.0f && MousePosOnImageY() < texture_.GetHeight();
+
+  if (ImGui::IsMouseClicked(0)) {
+    // Mouse pressed down inside of the image
+    p_->mouse_pos_on_image_prev_click_ = {MousePosOnImageX(), MousePosOnImageY()};
+    p_->mouse_pos_prev_click_ = ImGui::GetMousePos();
+    p_->mouse_clicked_inside_ = inside;
+  }
+
   if (!inside) {
     return;
   }
 
-  auto& io = ImGui::GetIO();
-  auto wheel_delta = io.MouseWheel;
-  if (io.MouseDoubleClicked[0]) {
-    scale_ = 1.0f;
-  } else if (io.KeyCtrl && wheel_delta != 0.0f) {
-    if (wheel_delta > 0) {
-      scale_ *= wheel_delta * 1.1f;
-    } else {
-      scale_ /= std::abs(wheel_delta * 1.1f);
+  // Drag related
+  if (p_->mouse_clicked_inside_ && ImGui::IsMouseDown(0)) {
+    // Mouse button is down, check if it is being dragged:
+    const auto dx = p_->mouse_pos_prev_click_.x - ImGui::GetMousePos().x;
+    const auto dy = p_->mouse_pos_prev_click_.y - ImGui::GetMousePos().y;
+    const auto delta = sqrt(dx*dx + dy*dy);
+    if (delta > io.MouseDragThreshold && !p_->mouse_dragging) {
+      p_->mouse_dragging = true;
+      p_->scroll_when_drag_started = {ImGui::GetScrollX(), ImGui::GetScrollY()};
+    }
+  } else {
+    p_->mouse_dragging = false;
+  }
+
+  if (p_->mouse_dragging) {
+    // Set scroll bar based on drag
+    const auto dx = p_->mouse_pos_prev_click_.x - ImGui::GetMousePos().x;
+    const auto dy = p_->mouse_pos_prev_click_.y - ImGui::GetMousePos().y;
+    
+    ImGui::SetScrollX(p_->scroll_when_drag_started.x + dx);
+    ImGui::SetScrollY(p_->scroll_when_drag_started.y + dy);
+  }
+  
+  // Zoom related
+  {
+    auto wheel_delta = io.MouseWheel;
+    if (io.MouseDoubleClicked[0]) {
+      scale_ = 1.0f;
+    } else if (io.KeyCtrl && wheel_delta != 0.0f) {
+      if (wheel_delta > 0) {
+        scale_ *= wheel_delta * 1.1f;
+      } else {
+        scale_ /= std::abs(wheel_delta * 1.1f);
+      }
     }
   }
 }
