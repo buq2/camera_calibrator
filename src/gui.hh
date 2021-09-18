@@ -42,12 +42,33 @@ class Image {
   float MousePosOnImageX();
   float MousePosOnImageY();
 
+  /// Set callback which is called when ImGui objects can be drawn
+  /// on top of the image.
+  /// For example:
+  /// \code
+  /// img.SetObjectDrawCallback([&](){
+  ///   float x = 10;
+  ///   float y = 10;
+  ///   auto dl = ImGui::GetWindowDrawList();
+  ///   dl->AddCircleFilled({x, y}, 30, 0xFFFFFFFF);
+  /// });
+  /// \endcode
+  void SetObjectDrawCallback(const std::function<void()> fun) {
+    draw_fun_ = fun;
+  }
+  void ImageCoordinateToDrawCoordinate(float &x, float &y) const;
+  std::tuple<float, float> GetImageDrawCoordinate(float x, float y) const;
+  float GetScale() const;
+
  private:
   void CheckMouse();
   void AdjustZoomToMouse();
+  void DrawObjects();
+
  private:
   ImagePrivate *p_{nullptr};
   Texture texture_;
+  std::function<void()> draw_fun_;
 };
 
 class GuiWindow {

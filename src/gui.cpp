@@ -40,17 +40,30 @@ class ImagePrivate {
   ImVec2 cursor_screen_pos_before_display{0.0f, 0.0f};
 
   // Where mouse was clicked?
-  ImVec2 mouse_pos_on_image_prev_click_{0.0f, 0.0f}; // On image
-  ImVec2 mouse_pos_prev_click_{0.0f, 0.0f}; // In gui coordinates
+  ImVec2 mouse_pos_on_image_prev_click_{0.0f, 0.0f};  // On image
+  ImVec2 mouse_pos_prev_click_{0.0f, 0.0f};           // In gui coordinates
   bool mouse_dragging{false};
   bool mouse_clicked_inside_{false};
   ImVec2 scroll_when_drag_started{0.0f, 0.0f};
   float scale{1.0f};
 
-  ImVec2 GetMousePoseInImageCoordinates() {
+  ImVec2 GetMousePosInImageCoordinates() {
     const auto& io = ImGui::GetIO();
     const auto& mpos = io.MousePos;
-    return {(mpos.x - cursor_screen_pos_before_display.x) / scale, (mpos.y - cursor_screen_pos_before_display.y) / scale};
+    return {(mpos.x - cursor_screen_pos_before_display.x) / scale,
+            (mpos.y - cursor_screen_pos_before_display.y) / scale};
+  }
+
+  ImVec2 GetImagePixelPosInScreenCoordinates(ImVec2 pos) {
+    // First remove scale
+    pos.x *= scale;
+    pos.y *= scale;
+
+    // Remove cursor pos
+    pos.x += cursor_screen_pos_before_display.x;
+    pos.y += cursor_screen_pos_before_display.y;
+
+    return pos;
   }
 };
 
@@ -124,34 +137,46 @@ void Image::SetImage(const int image_width, const int image_height,
 
 void Image::SetImage(const cv::Mat& in) { texture_.SetTexture(in); }
 
+void Image::ImageCoordinateToDrawCoordinate(float& x, float& y) const {
+  const auto pos = p_->GetImagePixelPosInScreenCoordinates({x, y});
+  x = pos.x;
+  y = pos.y;
+}
+
+std::tuple<float, float> Image::GetImageDrawCoordinate(float x, float y) const {
+  ImageCoordinateToDrawCoordinate(x, y);
+  return {x, y};
+}
+
+float Image::GetScale() const { return p_->scale; }
+
 void Image::Display() {
   // Screen pos needs to be taken before displaying the image
   p_->cursor_screen_pos_before_display = ImGui::GetCursorScreenPos();
   texture_.Display(p_->scale);
-      
+  if (draw_fun_) draw_fun_();
   CheckMouse();
 }
 
 float Image::MousePosOnImageX() { return p_->mouse_pos_on_image_.x; }
 float Image::MousePosOnImageY() { return p_->mouse_pos_on_image_.y; }
 
-void Image::AdjustZoomToMouse()
-{
+void Image::AdjustZoomToMouse() {
   // Get new position of the mouse. It should be the same as before
-  auto new_mpos = p_->GetMousePoseInImageCoordinates();
+  auto new_mpos = p_->GetMousePosInImageCoordinates();
   // Calculate error (image coordinates)
   const auto dx = new_mpos.x - p_->mouse_pos_on_image_.x;
   const auto dy = new_mpos.y - p_->mouse_pos_on_image_.y;
   // (screen coordinates)
-  const auto dxs = dx*p_->scale;
-  const auto dys = dy*p_->scale;
+  const auto dxs = dx * p_->scale;
+  const auto dys = dy * p_->scale;
   // Adjust scroll
   ImGui::SetScrollX(ImGui::GetScrollX() - dxs);
   ImGui::SetScrollY(ImGui::GetScrollY() - dys);
 }
 
 void Image::CheckMouse() {
-  p_->mouse_pos_on_image_ = p_->GetMousePoseInImageCoordinates();
+  p_->mouse_pos_on_image_ = p_->GetMousePosInImageCoordinates();
 
   auto& io = ImGui::GetIO();
   const bool inside =
@@ -160,7 +185,8 @@ void Image::CheckMouse() {
 
   if (ImGui::IsMouseClicked(0)) {
     // Mouse pressed down inside of the image
-    p_->mouse_pos_on_image_prev_click_ = {MousePosOnImageX(), MousePosOnImageY()};
+    p_->mouse_pos_on_image_prev_click_ = {MousePosOnImageX(),
+                                          MousePosOnImageY()};
     p_->mouse_pos_prev_click_ = ImGui::GetMousePos();
     p_->mouse_clicked_inside_ = inside;
   }
@@ -174,7 +200,7 @@ void Image::CheckMouse() {
     // Mouse button is down, check if it is being dragged:
     const auto dx = p_->mouse_pos_prev_click_.x - ImGui::GetMousePos().x;
     const auto dy = p_->mouse_pos_prev_click_.y - ImGui::GetMousePos().y;
-    const auto delta = sqrt(dx*dx + dy*dy);
+    const auto delta = sqrt(dx * dx + dy * dy);
     if (delta > io.MouseDragThreshold && !p_->mouse_dragging) {
       p_->mouse_dragging = true;
       p_->scroll_when_drag_started = {ImGui::GetScrollX(), ImGui::GetScrollY()};
@@ -187,11 +213,11 @@ void Image::CheckMouse() {
     // Set scroll bar based on drag
     const auto dx = p_->mouse_pos_prev_click_.x - ImGui::GetMousePos().x;
     const auto dy = p_->mouse_pos_prev_click_.y - ImGui::GetMousePos().y;
-    
+
     ImGui::SetScrollX(p_->scroll_when_drag_started.x + dx);
     ImGui::SetScrollY(p_->scroll_when_drag_started.y + dy);
   }
-  
+
   // Zoom related
   {
     auto wheel_delta = io.MouseWheel;

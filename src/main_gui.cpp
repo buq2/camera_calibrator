@@ -14,11 +14,16 @@ int main(int argc, char *argv[]) {
 
   conf.Initialize();
   Image image;
+  image.SetObjectDrawCallback([&] {
+    auto dl = ImGui::GetWindowDrawList();
+    const auto [x, y] = image.GetImageDrawCoordinate(100, 100);
+    dl->AddCircleFilled({x, y}, 30 * image.GetScale(), 0xFF445533);
+  });
+  image.SetImage(img);
   while (!conf.Draw([&]() {
     ImGui::NewFrame();
     ImGui::Begin("win", NULL, ImGuiWindowFlags_HorizontalScrollbar);
 
-    image.SetImage(img);
     image.Display();
 
     ImGui::End();
