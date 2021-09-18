@@ -37,12 +37,21 @@ class ImagePrivate {
  public:
   ImVec2 mouse_pos_on_image_{0.0f, 0.0f};
 
+  ImVec2 cursor_screen_pos_before_display{0.0f, 0.0f};
+
   // Where mouse was clicked?
   ImVec2 mouse_pos_on_image_prev_click_{0.0f, 0.0f}; // On image
   ImVec2 mouse_pos_prev_click_{0.0f, 0.0f}; // In gui coordinates
   bool mouse_dragging{false};
   bool mouse_clicked_inside_{false};
   ImVec2 scroll_when_drag_started{0.0f, 0.0f};
+  float scale{1.0f};
+
+  ImVec2 GetMousePoseInImageCoordinates() {
+    const auto& io = ImGui::GetIO();
+    const auto& mpos = io.MousePos;
+    return {(mpos.x - cursor_screen_pos_before_display.x) / scale, (mpos.y - cursor_screen_pos_before_display.y) / scale};
+  }
 };
 
 Texture::Texture() : p_(new TexturePrivate) {}
@@ -117,19 +126,33 @@ void Image::SetImage(const cv::Mat& in) { texture_.SetTexture(in); }
 
 void Image::Display() {
   // Screen pos needs to be taken before displaying the image
-  ImVec2 screen_pos = ImGui::GetCursorScreenPos();
-  texture_.Display(scale_);
-  p_->mouse_pos_on_image_.x =
-      (ImGui::GetIO().MousePos.x - screen_pos.x) / scale_;
-  p_->mouse_pos_on_image_.y =
-      (ImGui::GetIO().MousePos.y - screen_pos.y) / scale_;
+  p_->cursor_screen_pos_before_display = ImGui::GetCursorScreenPos();
+  texture_.Display(p_->scale);
+      
   CheckMouse();
 }
 
 float Image::MousePosOnImageX() { return p_->mouse_pos_on_image_.x; }
 float Image::MousePosOnImageY() { return p_->mouse_pos_on_image_.y; }
 
+void Image::AdjustZoomToMouse()
+{
+  // Get new position of the mouse. It should be the same as before
+  auto new_mpos = p_->GetMousePoseInImageCoordinates();
+  // Calculate error (image coordinates)
+  const auto dx = new_mpos.x - p_->mouse_pos_on_image_.x;
+  const auto dy = new_mpos.y - p_->mouse_pos_on_image_.y;
+  // (screen coordinates)
+  const auto dxs = dx*p_->scale;
+  const auto dys = dy*p_->scale;
+  // Adjust scroll
+  ImGui::SetScrollX(ImGui::GetScrollX() - dxs);
+  ImGui::SetScrollY(ImGui::GetScrollY() - dys);
+}
+
 void Image::CheckMouse() {
+  p_->mouse_pos_on_image_ = p_->GetMousePoseInImageCoordinates();
+
   auto& io = ImGui::GetIO();
   const bool inside =
       MousePosOnImageX() >= 0.0f && MousePosOnImageX() < texture_.GetWidth() &&
@@ -173,13 +196,15 @@ void Image::CheckMouse() {
   {
     auto wheel_delta = io.MouseWheel;
     if (io.MouseDoubleClicked[0]) {
-      scale_ = 1.0f;
+      p_->scale = 1.0f;
+      AdjustZoomToMouse();
     } else if (io.KeyCtrl && wheel_delta != 0.0f) {
       if (wheel_delta > 0) {
-        scale_ *= wheel_delta * 1.1f;
+        p_->scale *= wheel_delta * 1.1f;
       } else {
-        scale_ /= std::abs(wheel_delta * 1.1f);
+        p_->scale /= std::abs(wheel_delta * 1.1f);
       }
+      AdjustZoomToMouse();
     }
   }
 }

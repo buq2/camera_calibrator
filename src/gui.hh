@@ -44,11 +44,10 @@ class Image {
 
  private:
   void CheckMouse();
-
+  void AdjustZoomToMouse();
  private:
   ImagePrivate *p_{nullptr};
   Texture texture_;
-  float scale_{1.0f};
 };
 
 class GuiWindow {
