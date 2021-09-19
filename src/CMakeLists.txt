@@ -30,16 +30,14 @@ FIND_PACKAGE(SDL2 REQUIRED)
 FIND_PACKAGE(GLEW REQUIRED)
 FIND_PACKAGE(imgui REQUIRED)
 SET(IMGUI_BINDINGS_DIR ${imgui_RES_DIRS}/bindings/)
-ADD_EXECUTABLE(test_gui
-    main_gui.cpp
-    gui.cpp
+
+add_library(gui
+    gui.cpp gui.hh
+    scene.cpp scene.hh
     ${IMGUI_BINDINGS_DIR}/imgui_impl_sdl.cpp
     ${IMGUI_BINDINGS_DIR}/imgui_impl_opengl3.cpp
     )
-TARGET_INCLUDE_DIRECTORIES(test_gui
-    PUBLIC ${IMGUI_BINDINGS_DIR}
-    )
-TARGET_LINK_LIBRARIES(test_gui
+target_link_libraries(gui
     SDL2::SDL2main
     SDL2::SDL2
     GLEW::GLEW
@@ -47,4 +45,15 @@ TARGET_LINK_LIBRARIES(test_gui
     opencv::core  
     opencv::imgproc
     opencv::highgui
+    )
+TARGET_INCLUDE_DIRECTORIES(gui
+    PUBLIC ${IMGUI_BINDINGS_DIR}
+    )
+
+ADD_EXECUTABLE(test_gui
+    main_gui.cpp
+    )
+
+TARGET_LINK_LIBRARIES(test_gui
+    gui
     )
