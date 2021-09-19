@@ -179,12 +179,10 @@ void Image::CheckMouse() {
   p_->mouse_pos_on_image_ = p_->GetMousePosInImageCoordinates();
 
   auto& io = ImGui::GetIO();
-  const bool inside =
-      MousePosOnImageX() >= 0.0f && MousePosOnImageX() < texture_.GetWidth() &&
-      MousePosOnImageY() >= 0.0f && MousePosOnImageY() < texture_.GetHeight();
+  // Last created item was the image, easy to check if mouse was inside of it
+  const bool inside = ImGui::IsItemHovered();
 
   if (ImGui::IsMouseClicked(0)) {
-    // Mouse pressed down inside of the image
     p_->mouse_pos_on_image_prev_click_ = {MousePosOnImageX(),
                                           MousePosOnImageY()};
     p_->mouse_pos_prev_click_ = ImGui::GetMousePos();
