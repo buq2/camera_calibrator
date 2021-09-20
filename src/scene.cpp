@@ -2,10 +2,20 @@
 #include <GL/glew.h>
 #include <Eigen/Geometry>
 #include "imgui.h"
+#include <iostream>
 
 using namespace calibrator;
 
-Matrix4 SceneCamera::GetView() { return view_matrix_; }
+SceneCamera::SceneCamera()
+{
+  SetAspect(1.0f);
+}
+void SceneCamera::SetAspect(const float aspect)
+{
+  projection_ = GetProjection(fov_, aspect, near_, far_);
+}
+
+Matrix4 SceneCamera::GetView() { return projection_*view_matrix_; }
 
 void SceneCamera::UpdateViewMatrix() {
   Eigen::AngleAxisf roll(0.0f, Eigen::Vector3f::UnitZ());
@@ -15,14 +25,25 @@ void SceneCamera::UpdateViewMatrix() {
   r_ = q.matrix();
 
   const auto pos = focus_ - r_ * forward_ * distance_;
+  
+  view_matrix_ = Matrix4::Identity();
   view_matrix_.block<3, 3>(0, 0) = r_;
-  view_matrix_.block<3, 1>(0, 3) = pos;
+  view_matrix_.block<3, 1>(0, 3) = pos.transpose() * r_;
+  view_matrix_ = (view_matrix_.inverse()).eval();
+}
+
+void SceneCamera::SetMousePos(const Point2D& pos)
+{
+  const auto dx = prev_mouse_pos_.x()-pos.x();
+  const auto dy = prev_mouse_pos_.y()-pos.y();
+  MouseRotate(dx, dy);
+  prev_mouse_pos_ = pos;
 }
 
 void SceneCamera::MouseRotate(float dx, float dy) {
   const auto s = (r_ * up_).y() >= 0.0f ? 1.0f : -1.0f;
-  yaw_ = s * dx * rotation_speed_;
-  pitch_ = dy * rotation_speed_;
+  yaw_ += s * dx * rotation_speed_;
+  pitch_ += dy * rotation_speed_;
   UpdateViewMatrix();
 }
 
@@ -30,6 +51,19 @@ void SceneCamera::MousePan(float dx, float dy) {
   focus_ -= r_ * right_ * dx * distance_;
   focus_ += r_ * up_ * dy * distance_;
   UpdateViewMatrix();
+}
+
+Matrix4 SceneCamera::GetProjection(float fovy, float aspect, float near, float far)
+{
+  Matrix4 out{Matrix4::Identity()};
+
+  auto tanHalfFovy = tan((fovy/180.0f*3.14159265358979323846f) / 2.0f);
+  out(0,0) = 1.0f/ (aspect * tanHalfFovy);
+  out(1,1) = 1.0f / (tanHalfFovy);
+  out(2,2) = - (far + near) / (far - near);
+  out(2,3) = - 1.0f;
+  out(3,2) = - (2.0f * far * near) / (far - near);
+  return out;
 }
 
 Scene::Scene() {
@@ -50,16 +84,13 @@ void Scene::Render() {
   ImGui::Begin("Scene");
   ImVec2 viewport_size = ImGui::GetContentRegionAvail();
   fb_.Init((int)viewport_size.x, (int)viewport_size.y);
+  cam_.SetAspect(viewport_size.x/viewport_size.y);
+  const auto mpos = ImGui::GetMousePos();
+  cam_.SetMousePos({mpos.x, mpos.y});
+
   fb_.Bind();
 
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glFrustum(0.0f, viewport_size.x, viewport_size.y, 0.0f, 0.01f, 10.0f);
-
-  glMatrixMode(GL_MODELVIEW);
-  // glLoadIdentity();
   glLoadMatrixf(cam_.GetView().data());
-  // gluPerspective(120, 1.0, 0.01, 2.0);
 
   glEnableVertexAttribArray(0);
   glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);

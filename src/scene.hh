@@ -79,26 +79,37 @@ class FrameBuffer {
 
 class SceneCamera {
  public:
+  SceneCamera();
   Matrix4 GetView();
   void MouseRotate(float dx, float dy);
   void MousePan(float dx, float dy);
-
+  void SetMousePos(const Point2D& pos);
+  void SetAspect(const float aspect);
  private:
+  
   void UpdateViewMatrix();
+  Matrix4 GetProjection(float fovy, float aspect, float near, float far);
 
  private:
   float pitch_{0.0f};
   float yaw_{0.0f};
   float distance_{1.0};
-  float rotation_speed_{0.05f};
+  float rotation_speed_{0.005f};
   Vector3 focus_{0.0f, 0.0f, 0.0f};
+  
+  float fov_{120.0f};
+  float near_{0.01f};
+  float far_{20.0f};
 
   Matrix3 r_{Matrix3::Identity()};
   Matrix4 view_matrix_{Matrix4::Identity()};
+  Matrix4 projection_;
 
   const Vector3 up_{Eigen::Vector3f::UnitY()};
   const Vector3 right_{Eigen::Vector3f::UnitX()};
   const Vector3 forward_{-Eigen::Vector3f::UnitZ()};
+
+  Point2D prev_mouse_pos_;
 };  // class SceneCamera
 
 class Scene {
