@@ -3,8 +3,120 @@
 #include <Eigen/Geometry>
 #include "imgui.h"
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <optional>
+#include <filesystem>
 
 using namespace calibrator;
+
+std::string GetFileContent(const std::string fname) {
+  std::ifstream input(fname);
+  std::stringstream ss;
+  ss << input.rdbuf();
+  return ss.str();
+}
+
+std::optional<uint32_t> CompileShader(uint32_t shader_type, const std::string source) {
+  unsigned int id = glCreateShader(shader_type);
+
+  auto c_str_source = source.c_str();
+  glShaderSource(id, 1, &(c_str_source), nullptr);
+  glCompileShader(id);
+
+  GLint result;
+  glGetShaderiv(id, GL_COMPILE_STATUS, &result);
+
+  if (result == GL_FALSE) {
+    int error_len;
+    glGetShaderiv(id, GL_INFO_LOG_LENGTH, &error_len);
+
+    std::vector<GLchar> error_str(error_len + 1);
+    glGetShaderInfoLog(id, error_len, &error_len, error_str.data());
+
+    std::cout << "Failed to compile shader: " << error_str.data() << "\n";
+    glDeleteShader(id);
+    return std::nullopt;
+  }
+
+  return id;
+}
+
+void Shader::Use() {
+  if (loaded_) { 
+    std::cerr << "Tried to use shader program which is not properly compiled\n";
+    return;
+  }
+  glUseProgram(id_);
+}
+
+void Shader::Delete() {
+  if (!loaded_) return;
+  glDeleteProgram(id_);
+  loaded_ = false;
+}
+
+std::string LoadOrUseAsSource(const std::string& fname_or_source) {
+  try {
+    if (std::filesystem::exists(fname_or_source)) {
+      return GetFileContent(fname_or_source);
+    }
+  } catch(std::filesystem::filesystem_error& /*e*/) {
+  }
+  return fname_or_source;
+}
+
+void Shader::PrintProgramInfoLog(const std::string& msg) {
+  int error_len = 0;
+  glGetProgramiv(id_, GL_INFO_LOG_LENGTH, &error_len);
+  if (error_len == 0) return;
+  std::vector<GLchar> error_str(error_len + 1);
+  glGetProgramInfoLog(id_, error_len, NULL, error_str.data());
+  std::cout << msg << " " << error_str.data() << "\n";
+}
+
+bool Shader::Load(const std::string& vertex_shader, const std::string& fragment_shader) {
+  Delete();
+  id_ = glCreateProgram();
+
+  const auto vs = CompileShader(GL_VERTEX_SHADER, LoadOrUseAsSource(vertex_shader));
+  if (!vs) {
+    return false;
+  }
+
+  const auto fs = CompileShader(GL_FRAGMENT_SHADER, LoadOrUseAsSource(fragment_shader));
+  if (!fs) {
+    return false;
+  }
+
+  glAttachShader(id_, *vs);
+  glAttachShader(id_, *fs);
+
+  glLinkProgram(id_);
+
+  int success = 0;
+  glGetProgramiv(id_, GL_LINK_STATUS, &success);
+  if(!success) {
+    PrintProgramInfoLog("Failed to link program:");
+    glDeleteProgram(id_);
+    id_ = 0;
+  }
+
+  glValidateProgram(id_);
+
+  glGetProgramiv(id_, GL_VALIDATE_STATUS, &success);
+  if(!success) {
+    PrintProgramInfoLog("Failed to validate program:");
+    glDeleteProgram(id_);
+    id_ = 0;
+  }
+
+  glDeleteShader(*vs);
+  glDeleteShader(*fs);
+
+  loaded_ = true;
+  return true;
+}
 
 SceneCamera::SceneCamera()
 {
@@ -67,6 +179,32 @@ Matrix4 SceneCamera::GetProjection(float fovy, float aspect, float near, float f
 }
 
 Scene::Scene() {
+  shader_.Load(R""""(
+#version 330 core
+layout (location = 0) in vec3 aPos;   // the position variable has attribute position 0
+layout (location = 1) in vec3 aColor; // the color variable has attribute position 1
+  
+out vec3 ourColor; // output a color to the fragment shader
+
+void main()
+{
+    gl_Position = vec4(aPos, 1.0);
+    ourColor = aColor; // set ourColor to the input color we got from the vertex data
+}  
+)""""
+,
+R""""(
+#version 330 core
+out vec4 FragColor;  
+in vec3 ourColor;
+  
+void main()
+{
+    FragColor = vec4(ourColor, 1.0);
+}
+)""""
+  );
+
   static const GLfloat g_vertex_buffer_data[] = {
       -1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
   };
@@ -109,7 +247,7 @@ void Scene::Render() {
 
   fb_.Unbind();
 
-  ImGui::Image(reinterpret_cast<void*>(fb_.GetTexture()),
+  ImGui::Image((void*)(intptr_t)fb_.GetTexture(),
                {viewport_size.x, viewport_size.y}, ImVec2{0, 1}, ImVec2{1, 0});
   ImGui::End();
 }
