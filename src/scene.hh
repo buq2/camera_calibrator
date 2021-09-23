@@ -5,28 +5,67 @@
 
 namespace calibrator {
 
+void InitGlDebugMessages();
+class VertexBuffer {
+ public:
+  ~VertexBuffer();
+  VertexBuffer(const VertexBuffer& other) = delete;
+  VertexBuffer& operator=(const VertexBuffer& other) = delete;
+  VertexBuffer(VertexBuffer&& other) noexcept;
+  VertexBuffer& operator=(VertexBuffer&& other) noexcept;
+  void Delete();
+  void Create(const Points3D& points);
+  void Create(const float* data, size_t num_floats);
+  void Bind(const uint32_t location = 0);
+  void Unbind();
+
+ private:
+  bool loaded_{false};
+  uint32_t id_{0};
+  uint32_t size_{3};
+  bool normalized_{false};
+  uint32_t stride_{0};
+  uint32_t location_{0};
+  bool bound_{false};
+};  // class VertexBuffer
+
+class VertexArray {
+ public:
+  VertexArray();
+  ~VertexArray();
+  void Bind();
+  void Add(const uint32_t location, VertexBuffer&& buffer);
+
+ private:
+  std::vector<VertexBuffer> vbos_;
+  uint32_t id_{0};
+};
+
 class Shader {
  public:
-  ~Shader() {Delete();}
-  bool Load(const std::string& vertex_shader, const std::string& fragment_shader);
+  ~Shader() { Delete(); }
+  bool Load(const std::string& vertex_shader,
+            const std::string& fragment_shader);
   void Use();
   void Delete();
 
-  void Set(const std::string &name, bool val) {Set(name, (int)val);};
-  void Set(const std::string &name, int val) {glUniform1i(glGetUniformLocation(id_, name.c_str()), val);}
-  void Set(const std::string &name, int i1, int i2, int i3) {glUniform3i(glGetUniformLocation(id_, name.c_str()), i1, i2, i3);}
-  void Set(const std::string &name, float val) {glUniform1f(glGetUniformLocation(id_, name.c_str()), val);}
-  void Set(const std::string &name, float f1, float f2, float f3) {glUniform3f(glGetUniformLocation(id_, name.c_str()), f1, f2, f3);}
-  void Set(const std::string &name, Vector3 val) {glProgramUniform3fv(id_, glGetUniformLocation(id_, name.c_str()), 1, val.data());}
-  void Set(const std::string &name, Vector4 val) {glProgramUniform4fv(id_, glGetUniformLocation(id_, name.c_str()), 1, val.data());}
-  void Set(const std::string &name, Matrix3 val) {glUniformMatrix3fv(glGetUniformLocation(id_, name.c_str()), 1, GL_FALSE, val.data());}
-  void Set(const std::string &name, Matrix4 val) {glUniformMatrix4fv(glGetUniformLocation(id_, name.c_str()), 1, GL_FALSE, val.data());}
+  void Set(const std::string& name, bool val);
+  void Set(const std::string& name, int val);
+  void Set(const std::string& name, int i1, int i2, int i3);
+  void Set(const std::string& name, float val);
+  void Set(const std::string& name, float f1, float f2, float f3);
+  void Set(const std::string& name, Vector3 val);
+  void Set(const std::string& name, Vector4 val);
+  void Set(const std::string& name, Matrix3 val);
+  void Set(const std::string& name, Matrix4 val);
+
  private:
   void PrintProgramInfoLog(const std::string& msg);
+
  private:
   uint32_t id_{0};
   bool loaded_{false};
-}; // class Shader
+};  // class Shader
 class FrameBuffer {
  public:
   FrameBuffer() {}
@@ -107,8 +146,8 @@ class SceneCamera {
   void MousePan(float dx, float dy);
   void SetMousePos(const Point2D& pos);
   void SetAspect(const float aspect);
+
  private:
-  
   void UpdateViewMatrix();
   Matrix4 GetProjection(float fovy, float aspect, float near, float far);
 
@@ -118,7 +157,7 @@ class SceneCamera {
   float distance_{1.0};
   float rotation_speed_{0.005f};
   Vector3 focus_{0.0f, 0.0f, 0.0f};
-  
+
   float fov_{120.0f};
   float near_{0.01f};
   float far_{20.0f};
