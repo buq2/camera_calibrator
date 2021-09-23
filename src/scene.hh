@@ -9,6 +9,7 @@ void InitGlDebugMessages();
 class VertexBuffer {
  public:
   ~VertexBuffer();
+  VertexBuffer() = default;
   VertexBuffer(const VertexBuffer& other) = delete;
   VertexBuffer& operator=(const VertexBuffer& other) = delete;
   VertexBuffer(VertexBuffer&& other) noexcept;
@@ -48,6 +49,7 @@ class Shader {
             const std::string& fragment_shader);
   void Use();
   void Delete();
+  uint32_t GetId() const {return id_;}
 
   void Set(const std::string& name, bool val);
   void Set(const std::string& name, int val);
@@ -183,6 +185,7 @@ class Scene {
   SceneCamera cam_;
   GLuint vertexbuffer;
   FrameBuffer fb_;
+  VertexArray vao_;
   Shader shader_;
 };  // class Scene
 

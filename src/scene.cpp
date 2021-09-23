@@ -65,7 +65,7 @@ std::optional<uint32_t> CompileShader(uint32_t shader_type,
 }
 
 void Shader::Use() {
-  if (loaded_) {
+  if (!loaded_) {
     std::cerr << "Tried to use shader program which is not properly compiled\n";
     return;
   }
@@ -330,39 +330,32 @@ Scene::Scene() {
 
   shader_.Load(R""""(
 #version 330 core
-layout (location = 0) in vec3 aPos;   // the position variable has attribute position 0
-layout (location = 1) in vec3 aColor; // the color variable has attribute position 1
-  
-out vec3 ourColor; // output a color to the fragment shader
+layout (location = 0) in vec3 pos;
+
+uniform mat4 transform;
 
 void main()
 {
-    gl_Position = vec4(aPos, 1.0);
-    ourColor = aColor; // set ourColor to the input color we got from the vertex data
+    gl_Position = transform*vec4(pos, 1.0);
 }  
 )"""",
                R""""(
 #version 330 core
-out vec4 FragColor;  
-in vec3 ourColor;
+out vec4 FragColor;
   
 void main()
 {
-    FragColor = vec4(ourColor, 1.0);
+    FragColor = vec4(1.0,0.5,0.7,1.0);
 }
 )"""");
 
-  static const GLfloat g_vertex_buffer_data[] = {
+  const GLfloat g_vertex_buffer_data[] = {
       -1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
   };
 
-  // Generate 1 buffer, put the resulting identifier in vertexbuffer
-  glGenBuffers(1, &vertexbuffer);
-  // The following commands will talk about our 'vertexbuffer' buffer
-  glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-  // Give our vertices to OpenGL.
-  glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data),
-               g_vertex_buffer_data, GL_STATIC_DRAW);
+  VertexBuffer vbo;
+  vbo.Create(g_vertex_buffer_data, 9);
+  vao_.Add(0, std::move(vbo));
 }
 
 void Scene::Render() {
@@ -373,24 +366,17 @@ void Scene::Render() {
   const auto mpos = ImGui::GetMousePos();
   cam_.SetMousePos({mpos.x, mpos.y});
 
+  shader_.Use();
   fb_.Bind();
 
-  glLoadMatrixf(cam_.GetView().data());
+  const auto transform_location = glGetUniformLocation(shader_.GetId(), "transform");
+  glUniformMatrix4fv(transform_location, 1, GL_FALSE, cam_.GetView().data());
 
-  glEnableVertexAttribArray(0);
-  glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-  glVertexAttribPointer(0,  // attribute 0. No particular reason for 0, but must
-                            // match the layout in the shader.
-                        3,  // size
-                        GL_FLOAT,  // type
-                        GL_FALSE,  // normalized?
-                        0,         // stride
-                        (void*)0   // array buffer offset
-  );
+  vao_.Bind();
+
   // Draw the triangle !
   glDrawArrays(GL_TRIANGLES, 0,
                3);  // Starting from vertex 0; 3 vertices total -> 1 triangle
-  glDisableVertexAttribArray(0);
 
   fb_.Unbind();
 
