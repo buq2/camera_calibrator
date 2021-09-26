@@ -49,7 +49,7 @@ class Shader {
             const std::string& fragment_shader);
   void Use();
   void Delete();
-  uint32_t GetId() const {return id_;}
+  uint32_t GetId() const { return id_; }
 
   void Set(const std::string& name, bool val);
   void Set(const std::string& name, int val);
@@ -146,7 +146,9 @@ class SceneCamera {
   Matrix4 GetView();
   void MouseRotate(float dx, float dy);
   void MousePan(float dx, float dy);
-  void SetMousePos(const Point2D& pos);
+  void SetMousePos(const Point2D& pos, bool rotate = true,
+                   bool just_started = false);
+  void MouseForward(float d);
   void SetAspect(const float aspect);
 
  private:
@@ -158,6 +160,8 @@ class SceneCamera {
   float yaw_{0.0f};
   float distance_{5.0};
   float rotation_speed_{0.005f};
+  float pan_speed_{0.005f};
+  float forward_speed_{1.05f};
   Vector3 focus_{0.0f, 0.0f, 0.0f};
 
   float fov_{45.0f};
@@ -182,11 +186,15 @@ class Scene {
   void Render();
 
  private:
+  void CheckMouse();
+
+ private:
   SceneCamera cam_;
   GLuint vertexbuffer;
   FrameBuffer fb_;
   VertexArray vao_;
   Shader shader_;
+  bool mouse_clicked_inside_{false};
 };  // class Scene
 
 }  // namespace calibrator

@@ -173,7 +173,10 @@ void Shader::Set(const std::string& name, Matrix4 val) {
                      val.data());
 }
 
-SceneCamera::SceneCamera() { SetAspect(1.0f); }
+SceneCamera::SceneCamera() {
+  SetAspect(1.0f);
+  UpdateViewMatrix();
+}
 void SceneCamera::SetAspect(const float aspect) {
   projection_ = GetProjection(fov_, aspect, near_, far_);
 }
@@ -194,23 +197,41 @@ void SceneCamera::UpdateViewMatrix() {
   view_matrix_.block<3, 1>(0, 3) = -pos.transpose() * r_;
 }
 
-void SceneCamera::SetMousePos(const Point2D& pos) {
+void SceneCamera::SetMousePos(const Point2D& pos, bool rotate,
+                              bool just_started) {
+  if (just_started) prev_mouse_pos_ = pos;
   const auto dx = prev_mouse_pos_.x() - pos.x();
   const auto dy = prev_mouse_pos_.y() - pos.y();
-  MouseRotate(dx, dy);
+  if (rotate) {
+    MouseRotate(dx, dy);
+  } else {
+    MousePan(dx, dy);
+  }
+
   prev_mouse_pos_ = pos;
 }
 
 void SceneCamera::MouseRotate(float dx, float dy) {
   const auto s = (r_ * up_).y() >= 0.0f ? 1.0f : -1.0f;
-  yaw_ += s * dx * rotation_speed_;
-  pitch_ += dy * rotation_speed_;
+  yaw_ -= s * dx * rotation_speed_;
+  pitch_ -= dy * rotation_speed_;
+  UpdateViewMatrix();
+}
+
+void SceneCamera::MouseForward(float d) {
+  if (d == 0) return;
+  if (d < 0) {
+    distance_ *= forward_speed_ * std::abs(d);
+  } else {
+    distance_ /= forward_speed_ * std::abs(d);
+  }
+
   UpdateViewMatrix();
 }
 
 void SceneCamera::MousePan(float dx, float dy) {
-  focus_ -= r_ * right_ * dx * distance_;
-  focus_ += r_ * up_ * dy * distance_;
+  focus_ += r_ * right_ * dx * distance_ * pan_speed_;
+  focus_ -= r_ * up_ * dy * distance_ * pan_speed_;
   UpdateViewMatrix();
 }
 
@@ -357,18 +378,42 @@ void main()
   vao_.Add(0, std::move(vbo));
 }
 
+void Scene::CheckMouse() {
+  const bool inside = ImGui::IsItemHovered();
+  const auto mpos = ImGui::GetMousePos();
+  if (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) {
+    mouse_clicked_inside_ = inside;
+  }
+
+  // Drag related
+  if (mouse_clicked_inside_ && ImGui::IsMouseDown(0)) {
+    // Mouse button is down, check if it is being dragged:
+    const bool just_started = ImGui::IsMouseClicked(0);
+    cam_.SetMousePos({mpos.x, mpos.y}, true, just_started);
+  } else if (mouse_clicked_inside_ && ImGui::IsMouseDown(1)) {
+    const bool just_started = ImGui::IsMouseClicked(1);
+    cam_.SetMousePos({mpos.x, mpos.y}, false, just_started);
+  }
+
+  // Zoom related
+  if (inside) {
+    auto& io = ImGui::GetIO();
+    auto wheel_delta = io.MouseWheel;
+    cam_.MouseForward(wheel_delta);
+  }
+}
+
 void Scene::Render() {
   ImGui::Begin("Scene");
   ImVec2 viewport_size = ImGui::GetContentRegionAvail();
   fb_.Init((int)viewport_size.x, (int)viewport_size.y);
   cam_.SetAspect(viewport_size.x / viewport_size.y);
-  const auto mpos = ImGui::GetMousePos();
-  cam_.SetMousePos({mpos.x, mpos.y});
 
   shader_.Use();
   fb_.Bind();
 
-  const auto transform_location = glGetUniformLocation(shader_.GetId(), "transform");
+  const auto transform_location =
+      glGetUniformLocation(shader_.GetId(), "transform");
   glUniformMatrix4fv(transform_location, 1, GL_FALSE, cam_.GetView().data());
 
   vao_.Bind();
@@ -381,5 +426,8 @@ void Scene::Render() {
 
   ImGui::Image((void*)(intptr_t)fb_.GetTexture(),
                {viewport_size.x, viewport_size.y}, ImVec2{0, 1}, ImVec2{1, 0});
+
+  CheckMouse();
+
   ImGui::End();
 }
