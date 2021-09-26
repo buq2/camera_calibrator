@@ -144,6 +144,7 @@ class SceneCamera {
  public:
   SceneCamera();
   Matrix4 GetView();
+  Vector3 GetCameraLocation();
   void MouseRotate(float dx, float dy);
   void MousePan(float dx, float dy);
   void SetMousePos(const Point2D& pos, bool rotate = true,

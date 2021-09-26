@@ -182,6 +182,10 @@ void SceneCamera::SetAspect(const float aspect) {
 }
 
 Matrix4 SceneCamera::GetView() { return projection_ * view_matrix_; }
+Vector3 SceneCamera::GetCameraLocation() {
+  // Looks ok, but something weird going on
+  return focus_ - r_ * forward_ * distance_;
+}
 
 void SceneCamera::UpdateViewMatrix() {
   Eigen::AngleAxisf roll(0.0f, Eigen::Vector3f::UnitZ());
@@ -190,7 +194,7 @@ void SceneCamera::UpdateViewMatrix() {
   Eigen::Quaternionf q = roll * yaw * pitch;
   r_ = q.matrix();
 
-  const auto pos = focus_ - r_ * forward_ * distance_;
+  const auto pos = GetCameraLocation();
 
   view_matrix_ = Matrix4::Identity();
   view_matrix_.block<3, 3>(0, 0) = r_;
@@ -353,10 +357,14 @@ Scene::Scene() {
 layout (location = 0) in vec3 pos;
 
 uniform mat4 transform;
+uniform vec3 camera_pos;
 
 void main()
 {
+    float pointsize = 50.0f;
     gl_Position = transform*vec4(pos, 1.0);
+    // Something wrong with the camera position...
+    gl_PointSize = pointsize/distance(-camera_pos, pos.xyz);
 }  
 )"""",
                R""""(
@@ -365,7 +373,11 @@ out vec4 FragColor;
   
 void main()
 {
-    FragColor = vec4(1.0,0.5,0.7,1.0);
+  if (length(gl_PointCoord - 0.5) > 0.5) {
+    // Outside of the circle
+    discard;
+  }
+  FragColor = vec4(1.0,0.5,0.7,1.0);
 }
 )"""");
 
@@ -415,12 +427,14 @@ void Scene::Render() {
   const auto transform_location =
       glGetUniformLocation(shader_.GetId(), "transform");
   glUniformMatrix4fv(transform_location, 1, GL_FALSE, cam_.GetView().data());
+  const auto camera_pos_location =
+    glGetUniformLocation(shader_.GetId(), "camera_pos");
+  glUniform3fv(camera_pos_location, 1, cam_.GetCameraLocation().data());
 
   vao_.Bind();
-
-  // Draw the triangle !
-  glDrawArrays(GL_TRIANGLES, 0,
-               3);  // Starting from vertex 0; 3 vertices total -> 1 triangle
+  glEnable(GL_PROGRAM_POINT_SIZE); 
+  glEnable(GL_POINT_SPRITE_OES);
+  glDrawArrays(GL_POINTS, 0, 3);
 
   fb_.Unbind();
 
