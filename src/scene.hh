@@ -156,17 +156,17 @@ class SceneCamera {
  private:
   float pitch_{0.0f};
   float yaw_{0.0f};
-  float distance_{1.0};
+  float distance_{5.0};
   float rotation_speed_{0.005f};
   Vector3 focus_{0.0f, 0.0f, 0.0f};
 
-  float fov_{120.0f};
+  float fov_{45.0f};
   float near_{0.01f};
   float far_{20.0f};
 
   Matrix3 r_{Matrix3::Identity()};
   Matrix4 view_matrix_{Matrix4::Identity()};
-  Matrix4 projection_;
+  Matrix4 projection_{Matrix4::Identity()};
 
   const Vector3 up_{Eigen::Vector3f::UnitY()};
   const Vector3 right_{Eigen::Vector3f::UnitX()};

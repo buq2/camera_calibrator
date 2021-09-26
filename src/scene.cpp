@@ -191,8 +191,7 @@ void SceneCamera::UpdateViewMatrix() {
 
   view_matrix_ = Matrix4::Identity();
   view_matrix_.block<3, 3>(0, 0) = r_;
-  view_matrix_.block<3, 1>(0, 3) = pos.transpose() * r_;
-  view_matrix_ = (view_matrix_.inverse()).eval();
+  view_matrix_.block<3, 1>(0, 3) = -pos.transpose() * r_;
 }
 
 void SceneCamera::SetMousePos(const Point2D& pos) {
@@ -217,14 +216,14 @@ void SceneCamera::MousePan(float dx, float dy) {
 
 Matrix4 SceneCamera::GetProjection(float fovy, float aspect, float near,
                                    float far) {
-  Matrix4 out{Matrix4::Identity()};
+  Matrix4 out{Matrix4::Zero()};
 
   auto tanHalfFovy = tan((fovy / 180.0f * 3.14159265358979323846f) / 2.0f);
   out(0, 0) = 1.0f / (aspect * tanHalfFovy);
   out(1, 1) = 1.0f / (tanHalfFovy);
   out(2, 2) = -(far + near) / (far - near);
-  out(2, 3) = -1.0f;
-  out(3, 2) = -(2.0f * far * near) / (far - near);
+  out(3, 2) = -1.0f;
+  out(2, 3) = -(2.0f * far * near) / (far - near);
   return out;
 }
 
