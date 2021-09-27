@@ -1,8 +1,8 @@
 #pragma once
 
 #include <GL/glew.h>
+#include <functional>
 #include "types.hh"
-
 namespace calibrator {
 
 void InitGlDebugMessages();
@@ -19,11 +19,13 @@ class VertexBuffer {
   void Create(const float* data, size_t num_floats);
   void Bind(const uint32_t location = 0);
   void Unbind();
+  uint32_t NumberOfElements() const { return num_elements_; };
 
  private:
   bool loaded_{false};
   uint32_t id_{0};
-  uint32_t size_{3};
+  uint32_t num_elements_{0};
+  uint32_t component_size_{3};
   bool normalized_{false};
   uint32_t stride_{0};
   uint32_t location_{0};
@@ -34,12 +36,18 @@ class VertexArray {
  public:
   VertexArray();
   ~VertexArray();
+  VertexArray(const VertexArray& other) = delete;
+  VertexArray& operator=(const VertexArray& other) = delete;
+  VertexArray(VertexArray&& other) noexcept;
+  VertexArray& operator=(VertexArray&& other) noexcept;
   void Bind();
   void Add(const uint32_t location, VertexBuffer&& buffer);
+  uint32_t NumberOfElements() const;
 
  private:
   std::vector<VertexBuffer> vbos_;
   uint32_t id_{0};
+  bool initialized_{false};
 };
 
 class Shader {
@@ -143,8 +151,8 @@ class FrameBuffer {
 class SceneCamera {
  public:
   SceneCamera();
-  Matrix4 GetView();
-  Vector3 GetCameraLocation();
+  Matrix4 GetView() const;
+  Vector3 GetCameraLocation() const;
   void MouseRotate(float dx, float dy);
   void MousePan(float dx, float dy);
   void SetMousePos(const Point2D& pos, bool rotate = true,
@@ -185,17 +193,41 @@ class Scene {
   Scene();
   SceneCamera& GetCamera() { return cam_; }
   void Render();
+  void SetDrawFunction(std::function<void()> draw_objects) {
+    draw_objects_ = draw_objects;
+  };
 
  private:
   void CheckMouse();
 
  private:
   SceneCamera cam_;
-  GLuint vertexbuffer;
   FrameBuffer fb_;
-  VertexArray vao_;
-  Shader shader_;
+
   bool mouse_clicked_inside_{false};
+  std::function<void()> draw_objects_;
 };  // class Scene
+
+class CalibrationScene {
+ public:
+  CalibrationScene();
+  void Render();
+  void AddPoints(const Points3D points, const Vector3& color = {1.0, 1.0, 1.0});
+
+ private:
+  void Draw();
+  void DrawPoints();
+
+ private:
+  Scene scene_;
+  VertexArray vao_;
+  Shader point_shader_;
+
+  struct PointData {
+    VertexArray vao;
+    Point3D color;
+  };
+  std::vector<PointData> points_;
+};
 
 }  // namespace calibrator

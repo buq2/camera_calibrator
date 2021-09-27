@@ -181,8 +181,8 @@ void SceneCamera::SetAspect(const float aspect) {
   projection_ = GetProjection(fov_, aspect, near_, far_);
 }
 
-Matrix4 SceneCamera::GetView() { return projection_ * view_matrix_; }
-Vector3 SceneCamera::GetCameraLocation() {
+Matrix4 SceneCamera::GetView() const { return projection_ * view_matrix_; }
+Vector3 SceneCamera::GetCameraLocation() const {
   // Looks ok, but something weird going on
   return focus_ - r_ * forward_ * distance_;
 }
@@ -263,7 +263,8 @@ VertexBuffer& VertexBuffer::operator=(VertexBuffer&& other) noexcept {
 
   loaded_ = std::exchange(other.loaded_, false);
   id_ = std::exchange(other.id_, 0);
-  size_ = std::exchange(other.size_, 0);
+  component_size_ = std::exchange(other.component_size_, 0);
+  num_elements_ = std::exchange(other.num_elements_, 0);
   normalized_ = std::exchange(other.normalized_, false);
   stride_ = std::exchange(other.stride_, 0);
   location_ = std::exchange(other.location_, 0);
@@ -283,6 +284,7 @@ void VertexBuffer::Create(const float* data, size_t num_floats) {
 
   glBindBuffer(GL_ARRAY_BUFFER, id_);
 
+  num_elements_ = static_cast<uint32_t>(num_floats);
   glBufferData(GL_ARRAY_BUFFER, sizeof(float) * num_floats, data,
                GL_STATIC_DRAW);
 }
@@ -312,8 +314,8 @@ void VertexBuffer::Bind(const uint32_t location) {
 
   location_ = location;
   glBindBuffer(GL_ARRAY_BUFFER, id_);
-  glVertexAttribPointer(location, size_, GL_FLOAT, normalized_, stride_,
-                        (void*)0);
+  glVertexAttribPointer(location, component_size_, GL_FLOAT, normalized_,
+                        stride_, (void*)0);
   glEnableVertexAttribArray(location);
   bound_ = true;
 }
@@ -334,7 +336,10 @@ void VertexBuffer::Unbind() {
   bound_ = false;
 }
 
-VertexArray::VertexArray() { glGenVertexArrays(1, &id_); }
+VertexArray::VertexArray() {
+  glGenVertexArrays(1, &id_);
+  initialized_ = true;
+}
 
 void VertexArray::Add(const uint32_t location, VertexBuffer&& buffer) {
   Bind();
@@ -343,52 +348,34 @@ void VertexArray::Add(const uint32_t location, VertexBuffer&& buffer) {
 }
 
 VertexArray::~VertexArray() {
+  if (!initialized_) return;
   glDeleteVertexArrays(1, &id_);
   id_ = 0;
+  initialized_ = false;
+}
+
+VertexArray::VertexArray(VertexArray&& other) noexcept {
+  *this = std::move(other);
+}
+
+VertexArray& VertexArray::operator=(VertexArray&& other) noexcept {
+  vbos_ = std::move(other.vbos_);
+  id_ = std::exchange(other.id_, 0);
+  initialized_ = std::exchange(other.initialized_, false);
+  return *this;
+}
+
+uint32_t VertexArray::NumberOfElements() const {
+  uint32_t out = 0;
+  for (const auto& buf : vbos_) {
+    out += buf.NumberOfElements();
+  }
+  return out;
 }
 
 void VertexArray::Bind() { glBindVertexArray(id_); }
 
-Scene::Scene() {
-  InitGlDebugMessages();
-
-  shader_.Load(R""""(
-#version 330 core
-layout (location = 0) in vec3 pos;
-
-uniform mat4 transform;
-uniform vec3 camera_pos;
-
-void main()
-{
-    float pointsize = 50.0f;
-    gl_Position = transform*vec4(pos, 1.0);
-    // Something wrong with the camera position...
-    gl_PointSize = pointsize/distance(-camera_pos, pos.xyz);
-}  
-)"""",
-               R""""(
-#version 330 core
-out vec4 FragColor;
-  
-void main()
-{
-  if (length(gl_PointCoord - 0.5) > 0.5) {
-    // Outside of the circle
-    discard;
-  }
-  FragColor = vec4(1.0,0.5,0.7,1.0);
-}
-)"""");
-
-  const GLfloat g_vertex_buffer_data[] = {
-      -1.0f, -1.0f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-  };
-
-  VertexBuffer vbo;
-  vbo.Create(g_vertex_buffer_data, 9);
-  vao_.Add(0, std::move(vbo));
-}
+Scene::Scene() { InitGlDebugMessages(); }
 
 void Scene::CheckMouse() {
   const bool inside = ImGui::IsItemHovered();
@@ -420,21 +407,11 @@ void Scene::Render() {
   ImVec2 viewport_size = ImGui::GetContentRegionAvail();
   fb_.Init((int)viewport_size.x, (int)viewport_size.y);
   cam_.SetAspect(viewport_size.x / viewport_size.y);
-
-  shader_.Use();
   fb_.Bind();
 
-  const auto transform_location =
-      glGetUniformLocation(shader_.GetId(), "transform");
-  glUniformMatrix4fv(transform_location, 1, GL_FALSE, cam_.GetView().data());
-  const auto camera_pos_location =
-    glGetUniformLocation(shader_.GetId(), "camera_pos");
-  glUniform3fv(camera_pos_location, 1, cam_.GetCameraLocation().data());
-
-  vao_.Bind();
-  glEnable(GL_PROGRAM_POINT_SIZE); 
-  glEnable(GL_POINT_SPRITE_OES);
-  glDrawArrays(GL_POINTS, 0, 3);
+  if (draw_objects_) {
+    draw_objects_();
+  }
 
   fb_.Unbind();
 
@@ -444,4 +421,75 @@ void Scene::Render() {
   CheckMouse();
 
   ImGui::End();
+}
+
+CalibrationScene::CalibrationScene() {
+  point_shader_.Load(R""""(
+#version 330 core
+layout (location = 0) in vec3 pos;
+
+uniform mat4 transform;
+uniform vec3 camera_pos;
+
+void main()
+{
+    float pointsize = 50.0f;
+    gl_Position = transform*vec4(pos, 1.0);
+    // Something wrong with the camera position...
+    gl_PointSize = pointsize/distance(-camera_pos, pos.xyz);
+}  
+)"""",
+                     R""""(
+#version 330 core
+uniform vec3 color;
+out vec4 FragColor;
+  
+void main()
+{
+  if (length(gl_PointCoord - 0.5) > 0.5) {
+    // Outside of the circle
+    discard;
+  }
+  FragColor = vec4(color.rgb,1.0);
+}
+)"""");
+
+  scene_.SetDrawFunction([this]() { this->Draw(); });
+}
+
+void CalibrationScene::Render() { scene_.Render(); }
+
+void CalibrationScene::Draw() { DrawPoints(); }
+
+void CalibrationScene::AddPoints(const Points3D points, const Vector3& color) {
+  VertexBuffer vbo;
+  vbo.Create(points);
+  VertexArray vao;
+  vao.Add(0, std::move(vbo));
+  points_.push_back({std::move(vao), color});
+}
+
+void CalibrationScene::DrawPoints() {
+  point_shader_.Use();
+
+  const auto& cam = scene_.GetCamera();
+  const auto transform_location =
+      glGetUniformLocation(point_shader_.GetId(), "transform");
+  glUniformMatrix4fv(transform_location, 1, GL_FALSE, cam.GetView().data());
+  const auto camera_pos_location =
+      glGetUniformLocation(point_shader_.GetId(), "camera_pos");
+  glUniform3fv(camera_pos_location, 1, cam.GetCameraLocation().data());
+
+  glEnable(GL_PROGRAM_POINT_SIZE);
+  glEnable(GL_POINT_SPRITE_OES);
+
+  for (auto& points : points_) {
+    points.vao.Bind();
+
+    glUniform3fv(glGetUniformLocation(point_shader_.GetId(), "color"), 1,
+                 points.color.data());
+
+    const auto num_points = points.vao.NumberOfElements() / 3;
+    glDrawArrays(GL_POINTS, 0, num_points);
+  }
 }

@@ -17,13 +17,20 @@ int main(int argc, char *argv[]) {
 
   win.Initialize();
   Image image;
-  Scene scene;
+  CalibrationScene scene;
   image.SetObjectDrawCallback([&] {
     auto dl = ImGui::GetWindowDrawList();
     const auto [x, y] = image.GetImageDrawCoordinate(100, 100);
     dl->AddCircleFilled({x, y}, 30 * image.GetScale(), 0xFF445533);
   });
   image.SetImage(img);
+
+  scene.AddPoints({{-1.0f, -1.0f, 0.0f},
+                   {1.0f, -1.0f, 0.0f},
+                   {0.0f, 1.0f, 0.0f},
+                   {0.0f, -1.0f, 0.5f}},
+                  {1.0, 0.0, 0.0});
+
   while (!win.Draw([&]() {
     ImGui::NewFrame();
 
@@ -31,9 +38,7 @@ int main(int argc, char *argv[]) {
     image.Display();
     ImGui::End();
 
-    // ImGui::Begin("scene");
     scene.Render();
-    // ImGui::End();
   })) {
   }
 
