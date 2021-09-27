@@ -227,11 +227,12 @@ void Calibrator::Optimize(const std::vector<Points2D>& in_img_points,
   options.linear_solver_type = ceres::ITERATIVE_SCHUR;
   options.use_inner_iterations = true;
   options.max_num_iterations = 100;
-  options.minimizer_progress_to_stdout = true;
+  options.minimizer_progress_to_stdout = false;
+  options.logging_type = ceres::SILENT;
 
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
-  std::cout << summary.FullReport();
+  //std::cout << summary.FullReport();
 
   // Put params back
   K_(0, 0) = static_cast<float>(cam_intrinsics[OFFSET_FX]);
