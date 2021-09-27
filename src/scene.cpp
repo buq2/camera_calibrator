@@ -366,11 +366,13 @@ VertexArray& VertexArray::operator=(VertexArray&& other) noexcept {
 }
 
 uint32_t VertexArray::NumberOfElements() const {
-  uint32_t out = 0;
-  for (const auto& buf : vbos_) {
-    out += buf.NumberOfElements();
+  // There is not definite number of elements for the VAO
+  // as each VBO can have different size. Let's just keep this
+  // now as size of first VBO and see how it goes.
+  if (vbos_.size() > 0) {
+    return vbos_[0].NumberOfElements();
   }
-  return out;
+  return 0;
 }
 
 void VertexArray::Bind() { glBindVertexArray(id_); }
