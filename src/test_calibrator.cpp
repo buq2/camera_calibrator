@@ -7,20 +7,20 @@ using namespace calibrator;
 
 class DataGeneratorFixture {
  public:
-  DataGeneratorFixture() : generator(1600, 1000), calibrator(1600, 1000) {
-    Matrix3 K;
+  DataGeneratorFixture() : dist(5), generator(1600, 1000), calibrator(1600, 1000) {
     constexpr float f = 1000.0f;
     K << f, 0, generator.GetWidth() / 2.0f, 0, f, generator.GetHeight() / 2.0f,
         0, 0, 1;
     generator.SetK(K);
 
-    DynamicVector dist(5);
     dist << -4.0e-2f, 5e-4f, 1.0e-3f, 2.0e-5f, -3e-4f;
     generator.SetDistortion(dist);
     generator.SetNoiseInPixels(0.5);
   }
 
  protected:
+  Matrix3 K;
+  DynamicVector dist;
   DataGenerator generator;
   Calibrator calibrator;
 };
@@ -56,7 +56,18 @@ TEST_CASE_METHOD(DataGeneratorFixture, "opencv estimation works",
   }
 
   calibrator.Estimate(img_points, world_points);
+  const auto new_K = calibrator.GetK();
+  Matrix3 change = (new_K - K).array()/K.array();
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      if (K(i,j) != 0.0f) {
+        // Allow max 1% error
+        REQUIRE(change(i,j) < 0.01);
+      } else {
+        REQUIRE(new_K(i,j) == 0);
+      }
+    }
+  }
 
-  std::cout << calibrator.GetK() << std::endl;
   std::cout << calibrator.GetDistortion() << std::endl;
 }
