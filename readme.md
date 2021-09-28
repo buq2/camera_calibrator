@@ -11,6 +11,12 @@ cmake -S . -B build -A x64
 cmake --build build --parallel 12 --config Release
 ```
 
+# Tests
+
+```
+ctest --test-dir build
+```
+
 # cppcheck
 
 Windows cmd

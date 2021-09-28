@@ -8,4 +8,6 @@ include(cmake/output_paths.cmake)
 # Generate compile_commands.json for vscode use when Ninja is used
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+enable_testing()
+
 add_subdirectory(src)

@@ -18,14 +18,6 @@ target_link_libraries(calibrator
     )
 
 
-add_executable(test_calibrator
-    test_calibrator.cpp)
-target_link_libraries(test_calibrator
-    Catch2::Catch2
-    calibrator
-    )
-
-
 FIND_PACKAGE(SDL2 REQUIRED)
 FIND_PACKAGE(GLEW REQUIRED)
 FIND_PACKAGE(imgui REQUIRED)
@@ -57,3 +49,23 @@ ADD_EXECUTABLE(test_gui
 TARGET_LINK_LIBRARIES(test_gui
     gui
     )
+
+
+add_executable(test_calibrator
+    test_calibrator.cpp)
+target_link_libraries(test_calibrator
+    Catch2::Catch2
+    calibrator
+    )
+
+add_executable(test_geometry
+    test_geometry.cpp)
+target_link_libraries(test_geometry
+    Catch2::Catch2
+    calibrator
+    )
+
+include(CTest)
+include(Catch)
+catch_discover_tests(test_calibrator)
+catch_discover_tests(test_geometry)
