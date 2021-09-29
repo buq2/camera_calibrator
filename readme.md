@@ -35,3 +35,9 @@ On git bash on Windows
 ```
 docker run --rm -it -v `pwd -W`:/workdir unibeautify/clang-format -i -style=Google **/{*.cpp,*.hh}
 ``` 
+
+# Docker
+
+```
+docker build -t calibrator .
+```
