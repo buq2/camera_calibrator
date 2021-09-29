@@ -1,3 +1,5 @@
+![Build-github](https://github.com/buq2/camera_calibrator/actions/workflows/main.yml/badge.svg)
+
 # Camera calibrator
 
 Hope is to build faster and easier to use camera calibrator than what OpenCV has.
