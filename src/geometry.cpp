@@ -1,4 +1,5 @@
 #include "geometry.hh"
+#include <iostream>
 
 namespace calibrator {
 
@@ -20,9 +21,12 @@ Point3D PlaneNormal(const Plane& plane) {
 }
 
 Matrix3 RotationMatrixFromPlane(const Plane& plane, const Point3D& new_normal) {
+  if (!new_normal.isApprox(Point3D::UnitZ())) {
+    std::cerr << "Warning: RotationMatrixFromPlane with new_normal other than UnitZ not tested" << std::endl;
+  }
   const auto normal = PlaneNormal(plane);
-  const auto v1 = normal.cross(new_normal);
-  const auto v2 = normal.cross(v1);
+  const auto v1 = normal.cross(new_normal.normalized()).normalized();
+  const auto v2 = normal.cross(v1).normalized();
 
   Matrix3 out;
   out.row(0) = v1;

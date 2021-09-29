@@ -58,33 +58,36 @@ TEST_CASE_METHOD(PlaneFixture, "plane normal", "[geometry]") {
   }
 }
 
-TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix", "[geometry]") {
+TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix is rotation matrix", "[geometry]") {
   Point3D n{rand_float(), rand_float(), rand_float()};
   n.normalize();
-  std::cout << n << std::endl;
   const auto R = RotationMatrixFromPlane(plane, n);
-  std::cout << "R" << std::endl << R << std::endl;
-  // Ensure R is rotation matrix
-  {
-    // Transpose of R is it's inverse
-    const auto eye = R * R.transpose();
-    std::cout << "eye" << std::endl << eye << std::endl;
-    std::cout << "inv" << std::endl << R.inverse().eval() << std::endl;
-    for (int i = 0; i < 3; ++i) {
-      for (int j = 0; j < 3; ++j) {
-        if (i == j) {
-          REQUIRE(eye(i, j) == Approx(1).margin(1e-6));
-        } else {
-          REQUIRE(eye(i, j) == Approx(0).margin(1e-6));
-        }
+
+  // Transpose of R is it's inverse
+  const auto eye = R * R.transpose();
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      if (i == j) {
+        REQUIRE(eye(i, j) == Approx(1).margin(1e-6));
+      } else {
+        REQUIRE(eye(i, j) == Approx(0).margin(1e-6));
       }
     }
-
-    for (int i = 0; i < 3; ++i) {
-      REQUIRE(R.row(i).norm() == Approx(1));
-      REQUIRE(R.col(i).norm() == Approx(1));
-    }
   }
+
+  // Cols and rows are unit length
+  for (int i = 0; i < 3; ++i) {
+    REQUIRE(R.row(i).norm() == Approx(1));
+    REQUIRE(R.col(i).norm() == Approx(1));
+  }
+}
+
+
+TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix rotates correctly", "[geometry]") {
+  //Point3D n{rand_float(), rand_float(), rand_float()};
+  Point3D n{0.0f, 0.0f, 1.0f};
+  n.normalize();
+  const auto R = RotationMatrixFromPlane(plane, n);
 
   Points3D rotated_points;
   for (const auto& p : points) {
@@ -94,6 +97,7 @@ TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix", "[geometry]") {
   // For any linear combination of points on the plane (passing trough origin),
   // dot product with normal is 0
   for (int i = 0; i < 100; ++i) {
+    INFO("Test iteration: " << i);
     const auto p0 = rotated_points[rand() % rotated_points.size()];
     const auto p1 = rotated_points[rand() % rotated_points.size()] - p0;
     const auto p2 = rotated_points[rand() % rotated_points.size()] - p0;
