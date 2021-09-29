@@ -11,7 +11,7 @@ std::optional<Point2D> ProjectToCameraAndDistort(
     const cv::Matx33f& cameraMatrix, const cv::Mat& distCoeffs,
     const std::vector<cv::Point3f>& rvec, const std::vector<cv::Point3f>& tvec,
     const int width, const int height,
-    const std::uniform_real_distribution<float>& rand_pixel, std::mt19937& gen,
+    std::uniform_real_distribution<float>& rand_pixel, std::mt19937& gen,
     const Point3D& p_3d) {
   // Generate distorted point using OpenCV
   std::vector<cv::Point3f> object;

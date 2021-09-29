@@ -54,7 +54,7 @@ EigenMatrix ToEigen(const cv::Mat& in) {
   EigenMatrix out(rows, cols);
   for (int i = 0; i < rows; ++i) {
     for (int j = 0; j < cols; ++j) {
-      out(i, j) = static_cast<EigenMatrix::Scalar>(in.at<T>(i, j));
+      out(i, j) = static_cast<typename EigenMatrix::Scalar>(in.at<T>(i, j));
     }
   }
   return out;
