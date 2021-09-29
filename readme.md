@@ -40,4 +40,5 @@ docker run --rm -it -v `pwd -W`:/workdir unibeautify/clang-format -i -style=Goog
 
 ```
 docker build -t calibrator .
+docker run --rm -t calibrator /bin/bash -c 'cd build && ctest'
 ```

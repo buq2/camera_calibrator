@@ -53,6 +53,8 @@ TEST_CASE_METHOD(PlaneFixture, "plane normal", "[geometry]") {
     const auto p2 = points[rand() % points.size()] - p0;
 
     const auto p = p1 + p2;
+
+    INFO("Test iteration: " << i);
     REQUIRE(p(0) * n(0) + p(1) * n(1) + p(2) * n(2) ==
             Approx(0.0f).margin(1e-6));
   }

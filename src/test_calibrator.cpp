@@ -41,7 +41,7 @@ TEST_CASE_METHOD(DataGeneratorFixture, "planar data is generated",
   REQUIRE(p.image.size() == num);
 }
 
-TEST_CASE_METHOD(DataGeneratorFixture, "opencv estimation works",
+TEST_CASE_METHOD(DataGeneratorFixture, "calibration estimation works",
                  "[generator,calibrator]") {
   int num_p = 100;
   int num_cams = 5;
