@@ -43,7 +43,7 @@ Eigen::Vector<T, 3> ProjectToPlane_internal(
     const Eigen::Vector<T, 4>& plane, const Eigen::Vector<T, 3>& p,
     const Eigen::Vector<T, 3>& direction) {
   // (p-direction*t).dot(plane.block<3,1>(0,0)) + plane(3) = 0
-  const auto pn = plane.block<3, 1>(0, 0);
+  const auto pn = plane.template block<3, 1>(0, 0);
   const auto t = (p.dot(pn) + plane(3)) / direction.dot(pn);
 
   // Need to do eval here as if p and direction are the same vector,
