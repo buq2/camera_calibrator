@@ -22,7 +22,9 @@ Point3D PlaneNormal(const Plane& plane) {
 
 Matrix3 RotationMatrixFromPlane(const Plane& plane, const Point3D& new_normal) {
   if (!new_normal.isApprox(Point3D::UnitZ())) {
-    std::cerr << "Warning: RotationMatrixFromPlane with new_normal other than UnitZ not tested" << std::endl;
+    std::cerr << "Warning: RotationMatrixFromPlane with new_normal other than "
+                 "UnitZ not tested"
+              << std::endl;
   }
   const auto normal = PlaneNormal(plane);
   const auto v1 = normal.cross(new_normal.normalized()).normalized();

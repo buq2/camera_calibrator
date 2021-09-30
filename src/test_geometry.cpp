@@ -60,7 +60,8 @@ TEST_CASE_METHOD(PlaneFixture, "plane normal", "[geometry]") {
   }
 }
 
-TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix is rotation matrix", "[geometry]") {
+TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix is rotation matrix",
+                 "[geometry]") {
   Point3D n{rand_float(), rand_float(), rand_float()};
   n.normalize();
   const auto R = RotationMatrixFromPlane(plane, n);
@@ -84,9 +85,12 @@ TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix is rotation matrix", "[geo
   }
 }
 
-
-TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix rotates correctly", "[geometry]") {
-  //Point3D n{rand_float(), rand_float(), rand_float()};
+TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix rotates correctly",
+                 "[geometry]") {
+  // RotationMatrixFromPlane currently supports only
+  // UnitZ() as new normal for the rotated plane.
+  // Need to investigate if other normals should be used.
+  // Point3D n{rand_float(), rand_float(), rand_float()};
   Point3D n{0.0f, 0.0f, 1.0f};
   n.normalize();
   const auto R = RotationMatrixFromPlane(plane, n);
