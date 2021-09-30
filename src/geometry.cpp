@@ -12,7 +12,7 @@ Plane EstimatePlaneFinite(const Point3D& p1, const Point3D& p2,
 
   Plane out;
   out.block<3, 1>(0, 0) = A.inverse() * p;
-  out(3) = 1.0f;
+  out(3) = -1.0f;
   return out;
 }
 
@@ -38,20 +38,33 @@ Matrix3 RotationMatrixFromPlane(const Plane& plane, const Point3D& new_normal) {
   return out;
 }
 
-Point3D ProjectToPlane(const Plane& plane, const Point3D& p,
-                       const std::optional<Point3D>& projection_direction) {
-  Point3D direction;
-  if (!projection_direction) {
-    // Plane normal without scaling
-    Point3D direction = plane.block<3, 1>(0, 0);
-  } else {
-    direction = *projection_direction;
-  }
-
+template <typename T>
+Eigen::Vector<T, 3> ProjectToPlane_internal(
+    const Eigen::Vector<T, 4>& plane, const Eigen::Vector<T, 3>& p,
+    const Eigen::Vector<T, 3>& direction) {
   // (p-direction*t).dot(plane.block<3,1>(0,0)) + plane(3) = 0
   const auto pn = plane.block<3, 1>(0, 0);
   const auto t = (p.dot(pn) + plane(3)) / direction.dot(pn);
-  return p - direction * t;
+
+  // Need to do eval here as if p and direction are the same vector,
+  // we would otherwise get a bug which causes point to have inf values
+  const auto tmp = (direction * t).eval();
+  return p - tmp;
+}
+
+Point3D ProjectToPlane(const Plane& plane, const Point3D& p,
+                       const std::optional<Point3D>& projection_direction) {
+  if (!projection_direction) {
+    // Direction is plane normal without scaling
+    return ProjectToPlane_internal<float>(plane, p, plane.block<3, 1>(0, 0));
+  } else {
+    // As projection direction can be almost parallel to the plane
+    // use doubles for more precision.
+    return ProjectToPlane_internal<double>(plane.cast<double>(),
+                                           p.cast<double>(),
+                                           projection_direction->cast<double>())
+        .cast<float>();
+  }
 }
 
 template <typename Points1, typename Points2>

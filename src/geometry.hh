@@ -7,7 +7,7 @@
 namespace calibrator {
 
 /// Estimate plane which fulfills:
-/// a*x + b*y + c*y = 1
+/// a*x + b*y + c*y + d = 0
 /// This function can only calculate finite planes and works best with points
 /// near origin.
 Plane EstimatePlaneFinite(const Point3D& p1, const Point3D& p2,

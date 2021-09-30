@@ -21,9 +21,9 @@ class PlaneFixture {
 };
 
 TEST_CASE_METHOD(PlaneFixture, "generating points on plane", "[geometry]") {
-  // Must meet condition a*x + b*y + c*y = 1
+  // Must meet condition a*x + b*y + c*y + d = 0
   for (const auto& p : points) {
-    REQUIRE(p(0) * plane(0) + p(1) * plane(1) + p(2) * plane(2) - plane(3) ==
+    REQUIRE(p(0) * plane(0) + p(1) * plane(1) + p(2) * plane(2) + plane(3) ==
             Approx(0.0f).margin(1e-6));
   }
 }
@@ -38,7 +38,7 @@ TEST_CASE_METHOD(PlaneFixture,
     const auto p2 = points[rand() % points.size()] - p0;
 
     const auto p = p0 + p1 + p2;
-    REQUIRE(p(0) * plane(0) + p(1) * plane(1) + p(2) * plane(2) - plane(3) ==
+    REQUIRE(p(0) * plane(0) + p(1) * plane(1) + p(2) * plane(2) + plane(3) ==
             Approx(0.0f).margin(1e-6));
   }
 }
@@ -112,4 +112,43 @@ TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix rotates correctly",
     REQUIRE(p(0) * n(0) + p(1) * n(1) + p(2) * n(2) ==
             Approx(0.0f).margin(1e-6));
   }
+}
+
+TEST_CASE_METHOD(PlaneFixture, "project to plane", "[geometry]") {
+  for (int i = 0; i < 100; ++i) {
+    const Point3D p{rand_float(), rand_float(), rand_float()};
+    const auto projected = ProjectToPlane(plane, p);
+    INFO("Test iteration: " << i);
+    REQUIRE(plane(0) * projected(0) + plane(1) * projected(1) +
+                plane(2) * projected(2) + plane(3) ==
+            Approx(0).margin(1e-5));
+  }
+}
+
+TEST_CASE_METHOD(PlaneFixture, "project to plane using different normal",
+                 "[geometry]") {
+  int num_tests_run = 0;
+  for (int i = 0; i < 100; ++i) {
+    const Point3D p{rand_float(), rand_float(), rand_float()};
+    const Point3D n{rand_float(), rand_float(), rand_float()};
+
+    // Check that the proejction normal is not very much parallel to the plane.
+    // Otherwise we will have numerical issues and test will fail.
+    const auto condition =
+        plane.block<3, 1>(0, 0).normalized().dot(n.normalized());
+    if (condition < 1e-2) {
+      // Too parallel
+      continue;
+    }
+
+    const auto projected = ProjectToPlane(plane, p, n.normalized());
+    INFO("Test iteration: " << i);
+    ++num_tests_run;
+    REQUIRE(plane(0) * projected(0) + plane(1) * projected(1) +
+                plane(2) * projected(2) + plane(3) ==
+            Approx(0).margin(1e-5));
+  }
+
+  // Make sure we ran at least one test
+  REQUIRE(num_tests_run > 0);
 }
