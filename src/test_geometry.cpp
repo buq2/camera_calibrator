@@ -60,12 +60,7 @@ TEST_CASE_METHOD(PlaneFixture, "plane normal", "[geometry]") {
   }
 }
 
-TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix is rotation matrix",
-                 "[geometry]") {
-  Point3D n{rand_float(), rand_float(), rand_float()};
-  n.normalize();
-  const auto R = RotationMatrixFromPlane(plane, n);
-
+void TestIsRotationMatrix(const Matrix3& R) {
   // Transpose of R is it's inverse
   const auto eye = R * R.transpose();
   for (int i = 0; i < 3; ++i) {
@@ -83,6 +78,15 @@ TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix is rotation matrix",
     REQUIRE(R.row(i).norm() == Approx(1));
     REQUIRE(R.col(i).norm() == Approx(1));
   }
+}
+
+TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix is rotation matrix",
+                 "[geometry]") {
+  Point3D n{rand_float(), rand_float(), rand_float()};
+  n.normalize();
+  const auto R = RotationMatrixFromPlane(plane, n);
+
+  TestIsRotationMatrix(R);
 }
 
 TEST_CASE_METHOD(PlaneFixture, "plane rotation matrix rotates correctly",
@@ -151,4 +155,13 @@ TEST_CASE_METHOD(PlaneFixture, "project to plane using different normal",
 
   // Make sure we ran at least one test
   REQUIRE(num_tests_run > 0);
+}
+
+TEST_CASE("rotation matrix fixing", "[geometry]") {
+  for (int i = 0; i < 100; ++i) {
+    INFO("Test iteration: " << i);
+    Matrix3 R(Matrix3::Random());
+    const auto fixed_R = FixRotationMatrix(R);
+    TestIsRotationMatrix(fixed_R);
+  }
 }
