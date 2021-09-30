@@ -113,6 +113,10 @@ Matrix3 EstimateHomography(const Points2D& p1, const Points2D& p2) {
   return EstimateHomography<Points2D, Points2D>(p1, p2);
 }
 
+Matrix3 EstimateHomography(const Points3D& p1, const Points3D& p2) {
+  return EstimateHomography<Points3D, Points3D>(p1, p2);
+}
+
 Matrix3 EstimateKFromHomographies(const std::vector<Matrix3>& Hs) {
   // Zhang's camera calibration:
   // https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr98-71.pdf

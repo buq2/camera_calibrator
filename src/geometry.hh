@@ -28,9 +28,11 @@ Point3D ProjectToPlane(
     const Plane& plane, const Point3D& p,
     const std::optional<Point3D>& projection_direction = std::nullopt);
 
+/// For all Points3D, z must be constant.
 Matrix3 EstimateHomography(const Points2D& p1, const Points2D& p2);
 Matrix3 EstimateHomography(const Points2D& p1, const Points3D& p2);
 Matrix3 EstimateHomography(const Points3D& p1, const Points2D& p2);
+Matrix3 EstimateHomography(const Points3D& p1, const Points3D& p2);
 
 // Homographies should be ones which transform x=HX where X is the world
 // points and x are the image points.

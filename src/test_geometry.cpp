@@ -165,3 +165,27 @@ TEST_CASE("rotation matrix fixing", "[geometry]") {
     TestIsRotationMatrix(fixed_R);
   }
 }
+
+TEST_CASE("homography", "[geometry]") {
+  for (int i = 0; i < 10; ++i) {
+    INFO("Test iteration: " << i);
+    Matrix3 H(Matrix3::Random());
+    H /= H(2, 2);
+    Points3D p1, p2;
+    for (int j = 0; j < 10; ++j) {
+      p1.emplace_back(rand_float(), rand_float(), 1.0f);
+      p2.push_back(H * p1.back());
+      p2.back() /= p2.back()(2);
+    }
+
+    auto H2 = EstimateHomography(p1, p2);
+    H2 /= H2(2, 2);
+
+    const Matrix3 diff = H - H2;
+    for (int row = 0; row < 3; ++row) {
+      for (int col = 0; col < 3; ++col) {
+        REQUIRE(diff(row, col) == Approx(0).margin(1e-4));
+      }
+    }
+  }
+}
