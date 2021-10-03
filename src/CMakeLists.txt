@@ -17,6 +17,14 @@ target_link_libraries(calibrator
     Eigen3::Eigen
     )
 
+add_library(corners
+    corners.cpp corners.hh
+    )
+target_link_libraries(corners
+    PUBLIC
+    opencv::core
+    opencv::imgproc)
+
 
 FIND_PACKAGE(SDL2 REQUIRED)
 FIND_PACKAGE(GLEW REQUIRED)
