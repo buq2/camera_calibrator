@@ -48,12 +48,12 @@ class ConernerDetector {
   Points2D RefineCorners(const Points2D& corners, const GxGyAngleWeight& gxgyaw,
                          const uint8_t radius);
   ScoredCorners ScoreCorners(const Points2D& corners, const cv::Mat& img,
-    const cv::Mat& angle, const cv::Mat& weight);
+                             const cv::Mat& angle, const cv::Mat& weight);
 
  private:
   std::vector<CorrelationPatch> templates_;
   float tau_{0.01f};
-  std::vector<uint8_t> radiuses_{{4,8,12}};
+  std::vector<uint8_t> radiuses_{{4, 8, 12}};
 };  // class ConernerDetector
 
 }  // namespace calibrator
