@@ -16,7 +16,7 @@ class Texture {
   void Display(const float scale = 1.0f);
 
   void SetTexture(const int image_width, const int image_height,
-                  const unsigned char *image_data);
+                  const unsigned char *image_data, const bool rgb = true);
   void SetTexture(const cv::Mat &in);
   int GetWidth() const { return width_; }
   int GetHeight() const { return height_; }
@@ -35,8 +35,6 @@ class Image {
  public:
   Image();
   ~Image();
-  void SetImage(const int image_width, const int image_height,
-                const unsigned char *image_data);
   void SetImage(const cv::Mat &in);
   void Display();
   float MousePosOnImageX();
@@ -59,16 +57,23 @@ class Image {
   void ImageCoordinateToDrawCoordinate(float &x, float &y) const;
   std::tuple<float, float> GetImageDrawCoordinate(float x, float y) const;
   float GetScale() const;
+  void SetMinMaxDisplayedValues(const float min, const float max);
 
  private:
   void CheckMouse();
   void AdjustZoomToMouse();
   void DrawObjects();
+  cv::Mat GetProcessed();
 
  private:
   ImagePrivate *p_{nullptr};
   Texture texture_;
   std::function<void()> draw_fun_;
+  cv::Mat original_data_;
+  float min_displayed_{0.0f};
+  float max_displayed_{255.0f};
+  float data_min_{0.0f};
+  float data_max_{0.0f};
 };
 
 class GuiWindow {

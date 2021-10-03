@@ -91,16 +91,16 @@ void Texture::DestroyTexture() {
 }
 
 void Texture::SetTexture(const cv::Mat& in) {
-  const auto depth = in.type() & CV_MAT_DEPTH_MASK;
-  const auto chans = 1 + (in.type() >> CV_CN_SHIFT);
+  const auto depth = in.depth();
+  const auto chans = in.channels();
   assert(depth == CV_8U);
-  assert(chans == 3);
+  assert(chans == 3 || chans == 1);
 
-  SetTexture(in.cols, in.rows, in.data);
+  SetTexture(in.cols, in.rows, in.data, chans == 3);
 }
 
 void Texture::SetTexture(const int image_width, const int image_height,
-                         const unsigned char* image_data) {
+                         const unsigned char* image_data, const bool rgb) {
   if (!texture_created_) {
     glGenTextures(1, &p_->image_texture_);
   }
@@ -122,7 +122,15 @@ void Texture::SetTexture(const int image_width, const int image_height,
 #if defined(GL_UNPACK_ROW_LENGTH) && !defined(__EMSCRIPTEN__)
   glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_width, image_height, 0, GL_RGB,
+
+  // Set row alignment requirement to "none". Originally this value is
+  // set to 4, which then requires 4 byte aligned rows. We are bit lazy
+  // and will not do it right now, as we would have to monitor
+  // what kind of alignment the input has.
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+  const auto type = rgb ? GL_RGB : GL_LUMINANCE;
+  glTexImage2D(GL_TEXTURE_2D, 0, type, image_width, image_height, 0, type,
                GL_UNSIGNED_BYTE, image_data);
 }
 
@@ -130,12 +138,44 @@ Image::Image() : p_(new ImagePrivate) {}
 
 Image::~Image() { delete p_; }
 
-void Image::SetImage(const int image_width, const int image_height,
-                     const unsigned char* image_data) {
-  texture_.SetTexture(image_width, image_height, image_data);
+void Image::SetMinMaxDisplayedValues(const float min, const float max) {
+  if (min == min_displayed_ && max == max_displayed_) return;
+  min_displayed_ = min;
+  max_displayed_ = max;
+  texture_.SetTexture(GetProcessed());
 }
 
-void Image::SetImage(const cv::Mat& in) { texture_.SetTexture(in); }
+cv::Mat ApplyScalingAndConvertTo8U(const cv::Mat& img, float min_val,
+                                   float max_val) {
+  cv::Mat out = (img - min_val) / (max_val - min_val) * 255.0f;
+  out.convertTo(out, CV_8U);
+  return out;
+}
+
+cv::Mat Image::GetProcessed() {
+  if (original_data_.type() == CV_8U && min_displayed_ == 0.0f &&
+      max_displayed_ == 255.0f) {
+    return original_data_;
+  }
+
+  return ApplyScalingAndConvertTo8U(original_data_, min_displayed_,
+                                    max_displayed_);
+}
+
+void Image::SetImage(const cv::Mat& in) {
+  original_data_ = in.clone();
+  if (in.type() != CV_8U) {
+    double min, max;
+    cv::minMaxLoc(original_data_, &min, &max);
+    data_min_ = static_cast<float>(min);
+    data_max_ = static_cast<float>(max);
+  } else {
+    data_min_ = 0;
+    data_max_ = 255;
+  }
+
+  texture_.SetTexture(GetProcessed());
+}
 
 void Image::ImageCoordinateToDrawCoordinate(float& x, float& y) const {
   const auto pos = p_->GetImagePixelPosInScreenCoordinates({x, y});
@@ -156,10 +196,83 @@ void Image::Display() {
   texture_.Display(p_->scale);
   if (draw_fun_) draw_fun_();
   CheckMouse();
+  float min = min_displayed_;
+  float max = max_displayed_;
+
+  ImGui::PushItemWidth(ImGui::GetWindowWidth() / 3.0f);
+  ImGui::SliderFloat("Min", &min, data_min_, data_max_);
+  ImGui::SameLine();
+  ImGui::SliderFloat("Max", &max, data_min_, data_max_);
+  ImGui::PopItemWidth();
+
+  SetMinMaxDisplayedValues(min, max);
 }
 
 float Image::MousePosOnImageX() { return p_->mouse_pos_on_image_.x; }
 float Image::MousePosOnImageY() { return p_->mouse_pos_on_image_.y; }
+
+float GetGrayVal(const cv::Mat& img, float x, float y) {
+  y = std::max<float>(std::min<float>(y, static_cast<float>(img.rows - 1)),
+                      0.0f);
+  x = std::max<float>(std::min<float>(x, static_cast<float>(img.cols - 1)),
+                      0.0f);
+  if (img.depth() == CV_32F) {
+    return img.at<float>((int)y, (int)x);
+  } else if (img.depth() == CV_64F) {
+    return static_cast<float>(img.at<double>((int)y, (int)x));
+  } else if (img.depth() == CV_8U) {
+    return static_cast<float>(img.at<uint8_t>((int)y, (int)x));
+  } else if (img.depth() == CV_8S) {
+    return static_cast<float>(img.at<int8_t>((int)y, (int)x));
+  } else if (img.depth() == CV_16U) {
+    return static_cast<float>(img.at<uint16_t>((int)y, (int)x));
+  } else if (img.depth() == CV_16S) {
+    return static_cast<float>(img.at<int16_t>((int)y, (int)x));
+  }
+  assert(false);
+  return 0.0f;
+}
+
+template <typename T>
+std::vector<float> GetRGBValT(const cv::Mat& img, float x, float y) {
+  y = std::max<float>(std::min<float>(y, static_cast<float>(img.rows - 1)),
+                      0.0f);
+  x = std::max<float>(std::min<float>(x, static_cast<float>(img.cols - 1)),
+                      0.0f);
+  auto v = img.ptr<T>((int)y, (int)x);
+  return {static_cast<float>(v[0]), static_cast<float>(v[1]),
+          static_cast<float>(v[2])};
+}
+
+std::vector<float> GetRGBVal(const cv::Mat& img, float x, float y) {
+  if (img.depth() == CV_32F) {
+    return GetRGBValT<float>(img, x, y);
+  } else if (img.depth() == CV_64F) {
+    return GetRGBValT<double>(img, x, y);
+  } else if (img.depth() == CV_8U) {
+    return GetRGBValT<uint8_t>(img, x, y);
+  } else if (img.depth() == CV_8S) {
+    return GetRGBValT<int8_t>(img, x, y);
+  } else if (img.depth() == CV_16U) {
+    return GetRGBValT<uint16_t>(img, x, y);
+  } else if (img.depth() == CV_16S) {
+    return GetRGBValT<int16_t>(img, x, y);
+  }
+  assert(false);
+  return {};
+}
+
+std::vector<float> GetImageVal(const cv::Mat& img, const float x,
+                               const float y) {
+  if (img.channels() == 1) {
+    const auto val = GetGrayVal(img, x, y);
+    return {val};
+  } else if (img.channels() == 3) {
+    return GetRGBVal(img, x, y);
+  }
+  assert(false);
+  return {};
+}
 
 void Image::AdjustZoomToMouse() {
   // Get new position of the mouse. It should be the same as before
@@ -229,6 +342,16 @@ void Image::CheckMouse() {
         p_->scale /= std::abs(wheel_delta * 1.1f);
       }
       AdjustZoomToMouse();
+    }
+  }
+
+  if (inside) {
+    const auto vals = GetImageVal(original_data_, p_->mouse_pos_on_image_.x,
+                                  p_->mouse_pos_on_image_.y);
+    if (vals.size() == 3) {
+      ImGui::Text("Val: %f, %f, %f", vals[0], vals[1], vals[2]);
+    } else {
+      ImGui::Text("Val: %f", vals[0]);
     }
   }
 }

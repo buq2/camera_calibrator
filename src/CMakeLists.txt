@@ -23,7 +23,8 @@ add_library(corners
 target_link_libraries(corners
     PUBLIC
     opencv::core
-    opencv::imgproc)
+    opencv::imgproc
+    log_image)
 
 
 FIND_PACKAGE(SDL2 REQUIRED)
@@ -50,12 +51,19 @@ TARGET_INCLUDE_DIRECTORIES(gui
     PUBLIC ${IMGUI_BINDINGS_DIR}
     )
 
+add_library(log_image
+    log_image.cpp log_image.cpp)
+target_link_libraries(log_image
+    gui)
+
 ADD_EXECUTABLE(test_gui
     main_gui.cpp
     )
 
 TARGET_LINK_LIBRARIES(test_gui
     gui
+    log_image
+    corners
     )
 
 
