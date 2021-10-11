@@ -57,10 +57,10 @@ int main(int argc, char *argv[]) {
       LOG_IMAGE("img2", img);
     }
     if (ImGui::Button("Create log float 2")) {
-      cv::Mat img = cv::Mat::zeros(100, 100, CV_32F);
+      cv::Mat img = cv::Mat::zeros(1000, 1000, CV_32F);
       for (int row = 0; row < img.rows; ++row) {
         for (int col = 0; col < img.cols; ++col) {
-          img.at<float>(row, col) = rand() % 1000;
+          img.at<float>(row, col) = static_cast<float>(rand() % 1000);
         }
       }
       LOG_IMAGE("img2", img);

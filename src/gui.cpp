@@ -44,8 +44,10 @@ class ImagePrivate {
   ImVec2 mouse_pos_prev_click_{0.0f, 0.0f};           // In gui coordinates
   bool mouse_dragging{false};
   bool mouse_clicked_inside_{false};
+  bool mouse_inside_{false};
   ImVec2 scroll_when_drag_started{0.0f, 0.0f};
   float scale{1.0f};
+  float widget_space_{0.0f};
 
   ImVec2 GetMousePosInImageCoordinates() {
     const auto& io = ImGui::GetIO();
@@ -190,12 +192,7 @@ std::tuple<float, float> Image::GetImageDrawCoordinate(float x, float y) const {
 
 float Image::GetScale() const { return p_->scale; }
 
-void Image::Display() {
-  // Screen pos needs to be taken before displaying the image
-  p_->cursor_screen_pos_before_display = ImGui::GetCursorScreenPos();
-  texture_.Display(p_->scale);
-  if (draw_fun_) draw_fun_();
-  CheckMouse();
+void Image::DisplayIntensityClampWidgets() {
   float min = min_displayed_;
   float max = max_displayed_;
 
@@ -206,6 +203,33 @@ void Image::Display() {
   ImGui::PopItemWidth();
 
   SetMinMaxDisplayedValues(min, max);
+}
+
+void Image::DisplayImage() {
+  // Screen pos needs to be taken before displaying the image
+  p_->cursor_screen_pos_before_display = ImGui::GetCursorScreenPos();
+
+  const auto available_space = ImGui::GetWindowHeight()-ImGui::GetCursorPos().y;
+  const auto used_by_widgets = p_->widget_space_ + 5;
+  const auto usable_area_image = available_space - used_by_widgets;
+  const auto size = ImVec2(0, usable_area_image);
+  ImGui::BeginChild("image", size, false, ImGuiWindowFlags_HorizontalScrollbar);
+  texture_.Display(p_->scale);
+  if (draw_fun_) draw_fun_();
+  // CheckMouse must be called after texture_.Display and before EndChild
+  CheckMouse(); 
+  ImGui::EndChild();
+}
+
+void Image::Display() { 
+  DisplayImage();
+
+  // Calculate space used by other widgets which is then used as margin during next call
+  const auto y_before = ImGui::GetCursorScreenPos().y;
+  DisplayInfoWidgets();
+  DisplayIntensityClampWidgets();
+  const auto y_after = ImGui::GetCursorScreenPos().y;
+  p_->widget_space_ = y_after-y_before;
 }
 
 float Image::MousePosOnImageX() { return p_->mouse_pos_on_image_.x; }
@@ -293,16 +317,16 @@ void Image::CheckMouse() {
 
   auto& io = ImGui::GetIO();
   // Last created item was the image, easy to check if mouse was inside of it
-  const bool inside = ImGui::IsItemHovered();
+  p_->mouse_inside_ = ImGui::IsItemHovered();
 
   if (ImGui::IsMouseClicked(0)) {
     p_->mouse_pos_on_image_prev_click_ = {MousePosOnImageX(),
                                           MousePosOnImageY()};
     p_->mouse_pos_prev_click_ = ImGui::GetMousePos();
-    p_->mouse_clicked_inside_ = inside;
+    p_->mouse_clicked_inside_ = p_->mouse_inside_;
   }
 
-  if (!inside) {
+  if (!p_->mouse_inside_) {
     return;
   }
 
@@ -344,8 +368,10 @@ void Image::CheckMouse() {
       AdjustZoomToMouse();
     }
   }
+}
 
-  if (inside) {
+void Image::DisplayInfoWidgets() {
+  if (p_->mouse_inside_) {
     const auto vals = GetImageVal(original_data_, p_->mouse_pos_on_image_.x,
                                   p_->mouse_pos_on_image_.y);
     if (vals.size() == 3) {
@@ -353,6 +379,11 @@ void Image::CheckMouse() {
     } else {
       ImGui::Text("Val: %f", vals[0]);
     }
+    ImGui::Text("Pos: %f, %f", p_->mouse_pos_on_image_.x, p_->mouse_pos_on_image_.y);
+  } else {
+    // Reserve space
+    const auto h = ImGui::GetFontSize() + 2; // +2 from padding?
+    ImGui::Dummy(ImVec2(0, h*2));
   }
 }
 

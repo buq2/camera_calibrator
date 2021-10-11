@@ -61,6 +61,9 @@ class Image {
 
  private:
   void CheckMouse();
+  void DisplayImage();
+  void DisplayInfoWidgets();
+  void DisplayIntensityClampWidgets();
   void AdjustZoomToMouse();
   void DrawObjects();
   cv::Mat GetProcessed();
