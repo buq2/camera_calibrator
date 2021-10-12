@@ -43,7 +43,7 @@ class ConernerDetector {
   static cv::Mat AngleFromSobel(const cv::Mat& gx, const cv::Mat& gy);
   static cv::Mat WeightFromSobel(const cv::Mat& gx, const cv::Mat& gy);
   cv::Mat ScaleImage(const cv::Mat& img_gray);
-  Points2D NMS(const cv::Mat& corners, const float n, const float tau,
+  Points2D NMS(const cv::Mat& corners, const uint8_t n, const float tau,
                const float margin) const;
   Points2D RefineCorners(const Points2D& corners, const GxGyAngleWeight& gxgyaw,
                          const uint8_t radius);

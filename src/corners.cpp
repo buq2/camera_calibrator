@@ -174,10 +174,41 @@ ConernerDetector::GxGyAngleWeight ConernerDetector::GradientsAngleAndWeight(
   return out;
 }
 
-Points2D ConernerDetector::NMS(const cv::Mat& corners, const float n,
+Points2D ConernerDetector::NMS(const cv::Mat& corners, const uint8_t n,
                                const float tau, const float margin) const {
+  assert(corners.depth() == CV_32F && corners.channels() == 1);
+  assert(n%2 == 1);
+
   Points2D points;
-  // TODO: Implement
+
+  const auto w = corners.cols;
+  const auto h = corners.rows;
+  const auto half_n = n/2;
+
+  // Find local maxima
+  for (int row = half_n; row < h-half_n; ++row) {
+    for (int col = half_n; col < w-half_n; ++col) {
+      const auto val = corners.at<float>(row,col);
+      if (val < tau) continue;
+
+      bool fail = false;
+      for (int i = -half_n; i <= half_n && !fail; ++i) {
+        auto ptr = corners.ptr<float>(row+i);
+        for (int j = -half_n; j <= half_n; ++j) {
+          const auto &cmp_val = ptr[col+j];
+          if (cmp_val > val) {
+            fail = true;
+            break;
+          }
+        }
+      }
+
+      if (!fail) {
+        points.emplace_back(static_cast<float>(col), static_cast<float>(row));
+      }
+    }
+  }
+  
   return points;
 }
 
