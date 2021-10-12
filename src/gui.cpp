@@ -209,7 +209,8 @@ void Image::DisplayImage() {
   // Screen pos needs to be taken before displaying the image
   p_->cursor_screen_pos_before_display = ImGui::GetCursorScreenPos();
 
-  const auto available_space = ImGui::GetWindowHeight()-ImGui::GetCursorPos().y;
+  const auto available_space =
+      ImGui::GetWindowHeight() - ImGui::GetCursorPos().y;
   const auto used_by_widgets = p_->widget_space_ + 5;
   const auto usable_area_image = available_space - used_by_widgets;
   const auto size = ImVec2(0, usable_area_image);
@@ -217,19 +218,20 @@ void Image::DisplayImage() {
   texture_.Display(p_->scale);
   if (draw_fun_) draw_fun_();
   // CheckMouse must be called after texture_.Display and before EndChild
-  CheckMouse(); 
+  CheckMouse();
   ImGui::EndChild();
 }
 
-void Image::Display() { 
+void Image::Display() {
   DisplayImage();
 
-  // Calculate space used by other widgets which is then used as margin during next call
+  // Calculate space used by other widgets which is then used as margin during
+  // next call
   const auto y_before = ImGui::GetCursorScreenPos().y;
   DisplayInfoWidgets();
   DisplayIntensityClampWidgets();
   const auto y_after = ImGui::GetCursorScreenPos().y;
-  p_->widget_space_ = y_after-y_before;
+  p_->widget_space_ = y_after - y_before;
 }
 
 float Image::MousePosOnImageX() { return p_->mouse_pos_on_image_.x; }
@@ -379,11 +381,12 @@ void Image::DisplayInfoWidgets() {
     } else {
       ImGui::Text("Val: %f", vals[0]);
     }
-    ImGui::Text("Pos: %f, %f", p_->mouse_pos_on_image_.x, p_->mouse_pos_on_image_.y);
+    ImGui::Text("Pos: %f, %f", p_->mouse_pos_on_image_.x,
+                p_->mouse_pos_on_image_.y);
   } else {
     // Reserve space
-    const auto h = ImGui::GetFontSize() + 2; // +2 from padding?
-    ImGui::Dummy(ImVec2(0, h*2));
+    const auto h = ImGui::GetFontSize() + 2;  // +2 from padding?
+    ImGui::Dummy(ImVec2(0, h * 2));
   }
 }
 
