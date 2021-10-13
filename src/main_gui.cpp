@@ -1,4 +1,5 @@
 #include <GL/glew.h>
+#include <future>
 #include <opencv2/highgui.hpp>
 #include "corners.hh"
 #include "gui.hh"
@@ -9,7 +10,11 @@
 
 using namespace calibrator;
 
-void Gui() {}
+template <typename T>
+bool IsFutureReady(T &future) {
+  // MSVC has _Is_ready(), but it is not included in GCC
+  return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+}
 
 int main(int argc, char *argv[]) {
   GuiWindow win;
@@ -35,6 +40,10 @@ int main(int argc, char *argv[]) {
                    {0.0f, -1.0f, 0.5f}},
                   {1.0, 0.0, 0.0});
 
+  // We want to have the first future already filled -> buttons are
+  // enabled.
+  std::future<void> computation = std::promise<void>().get_future();
+
   while (!win.Draw([&]() {
     ImGui::NewFrame();
 
@@ -43,18 +52,17 @@ int main(int argc, char *argv[]) {
     ImGui::End();
 
     ImGui::Begin("controls");
+
+    bool disabled = false;
+    if (!IsFutureReady(computation)) {
+      // Computation is on going, do not start another one
+      ImGui::BeginDisabled();
+      disabled = true;
+    }
+
     if (ImGui::Button("Calculate corners")) {
-      detector.Detect(img);
-    }
-    if (ImGui::Button("Create log gray 1")) {
-      cv::Mat img = cv::Mat::zeros(100, 100, CV_8U);
-      cv::circle(img, {50, 50}, 20, {255, 255, 255}, 2);
-      LOG_IMAGE("img1", img);
-    }
-    if (ImGui::Button("Create log float 1")) {
-      cv::Mat img = cv::Mat::zeros(100, 100, CV_32F);
-      cv::circle(img, {50, 50}, 20, {255, 255, 255}, 2);
-      LOG_IMAGE("img2", img);
+      computation =
+          std::async(std::launch::async, [&]() { detector.Detect(img); });
     }
     if (ImGui::Button("Create log float 2")) {
       cv::Mat img = cv::Mat::zeros(1000, 1000, CV_32F);
@@ -65,6 +73,11 @@ int main(int argc, char *argv[]) {
       }
       LOG_IMAGE("img2", img);
     }
+
+    if (disabled) {
+      ImGui::EndDisabled();
+    }
+
     ImGui::End();
 
     scene.Render();
