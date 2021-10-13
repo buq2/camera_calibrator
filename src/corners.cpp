@@ -234,6 +234,7 @@ void ConernerDetector::Detect(const cv::Mat& img_in) {
   }
   LOG_IMAGE("corners_final", corners);
   const auto selected_corners = NMS(corners, 3, 0.025f, 5);
+  LOG_POINTS_2D("points_nms", selected_corners);
 
   // Refinement
   const auto gxgyaw = GradientsAngleAndWeight(img);
