@@ -74,6 +74,18 @@
         "array": "cpp",
         "complex": "cpp",
         "queue": "cpp",
-        "core": "cpp"
+        "core": "cpp",
+        "geometry": "cpp",
+        "unordered_set": "cpp",
+        "filesystem": "cpp",
+        "codecvt": "cpp",
+        "xthread": "cpp"
+    },
+    "[cpp]": {
+        "editor.wordBasedSuggestions": false,
+        "editor.suggest.insertMode": "replace",
+        "editor.semanticHighlighting.enabled": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
     }
 }

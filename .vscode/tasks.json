@@ -20,6 +20,24 @@
             "problemMatcher": [
                 "$msCompile"
             ]
+        },
+        {
+            "label": "build release",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "command": "cmd.exe",
+            "args": [
+                "/d",
+                "/c",
+                "C:\\Program Files (x86)\\Microsoft Visual Studio\\2017\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat",
+                "'&'",
+                "cmake","--build", "build", "--parallel", "12", "--config", "Release"
+            ],  
+            "problemMatcher": [
+                "$msCompile"
+            ]
         }
     ]
 }
