@@ -49,11 +49,15 @@ class ImagePrivate {
   float scale{1.0f};
   float widget_space_{0.0f};
 
+  // Amount of scroll(bars) used in screen pixels
+  float scroll_x_{0.0f};
+  float scroll_y_{0.0f};
+
   ImVec2 GetMousePosInImageCoordinates() {
     const auto& io = ImGui::GetIO();
     const auto& mpos = io.MousePos;
-    return {(mpos.x - cursor_screen_pos_before_display.x) / scale,
-            (mpos.y - cursor_screen_pos_before_display.y) / scale};
+    return {(mpos.x - cursor_screen_pos_before_display.x + scroll_x_) / scale,
+            (mpos.y - cursor_screen_pos_before_display.y + scroll_y_) / scale};
   }
 
   ImVec2 GetImagePixelPosInScreenCoordinates(ImVec2 pos) {
@@ -62,8 +66,8 @@ class ImagePrivate {
     pos.y *= scale;
 
     // Remove cursor pos
-    pos.x += cursor_screen_pos_before_display.x;
-    pos.y += cursor_screen_pos_before_display.y;
+    pos.x += cursor_screen_pos_before_display.x - scroll_x_;
+    pos.y += cursor_screen_pos_before_display.y - scroll_y_;
 
     return pos;
   }
@@ -205,20 +209,39 @@ void Image::DisplayIntensityClampWidgets() {
   SetMinMaxDisplayedValues(min, max);
 }
 
+void Image::CaptureCurrentScroll() {
+  p_->scroll_x_ = ImGui::GetScrollX();
+  p_->scroll_y_ = ImGui::GetScrollY();
+}
+
 void Image::DisplayImage() {
   // Screen pos needs to be taken before displaying the image
   p_->cursor_screen_pos_before_display = ImGui::GetCursorScreenPos();
 
+  // Calculate available space for child window/scroll area
   const auto available_space =
       ImGui::GetWindowHeight() - ImGui::GetCursorPos().y;
   const auto used_by_widgets = p_->widget_space_ + 5;
   const auto usable_area_image = available_space - used_by_widgets;
   const auto size = ImVec2(0, usable_area_image);
+
+  // Create the child window/scroll area
   ImGui::BeginChild("image", size, false, ImGuiWindowFlags_HorizontalScrollbar);
+
+  // Create/display the image/texture inside it's own scroll area
   texture_.Display(p_->scale);
+
+  // We need to know amount of scroll (which is known after image is drawn),
+  // before we draw anything or check mouse status
+  CaptureCurrentScroll();
+
+  // Draw primitives
   if (draw_fun_) draw_fun_();
+
   // CheckMouse must be called after texture_.Display and before EndChild
   CheckMouse();
+
+  // End child window/scroll area
   ImGui::EndChild();
 }
 

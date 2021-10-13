@@ -66,6 +66,7 @@ class Image {
   void DisplayIntensityClampWidgets();
   void AdjustZoomToMouse();
   void DrawObjects();
+  void CaptureCurrentScroll();
   cv::Mat GetProcessed();
 
  private:
