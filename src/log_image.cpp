@@ -23,8 +23,13 @@ void DisplayList(const std::string& name, const T& iterable,
                  std::string& selected) {
   std::string full_name("## ");
   full_name += name;
+  
+  // TODO: Do not hardcode the margin
+  // Without the margin two or more lists will take too much
+  // space and horizontal scroll bar will be created
+  constexpr float margin = 20.0f;
   if (ImGui::BeginListBox(full_name.c_str(),
-                          ImVec2(ImGui::GetWindowWidth() / 2,
+                          ImVec2(ImGui::GetWindowWidth() / 2 - margin,
                                  5 * ImGui::GetTextLineHeightWithSpacing()))) {
     for (const auto& it : iterable) {
       const bool is_selected = it.first == selected;

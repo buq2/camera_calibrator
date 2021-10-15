@@ -221,7 +221,9 @@ void Image::DisplayImage() {
   // Calculate available space for child window/scroll area
   const auto available_space =
       ImGui::GetWindowHeight() - ImGui::GetCursorPos().y;
-  const auto used_by_widgets = p_->widget_space_ + 5;
+  // TODO: Do not hard code margin
+  constexpr float margin = 8;
+  const auto used_by_widgets = p_->widget_space_ + margin;
   const auto usable_area_image = available_space - used_by_widgets;
   const auto size = ImVec2(0, usable_area_image);
 
@@ -408,7 +410,9 @@ void Image::DisplayInfoWidgets() {
                 p_->mouse_pos_on_image_.y);
   } else {
     // Reserve space
-    const auto h = ImGui::GetFontSize() + 2;  // +2 from padding?
+    // +X from padding?
+    constexpr float margin = 2;
+    const auto h = ImGui::GetFontSize() + margin;  
     ImGui::Dummy(ImVec2(0, h * 2));
   }
 }
