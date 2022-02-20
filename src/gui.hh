@@ -20,7 +20,8 @@ class Texture {
   void SetTexture(const cv::Mat &in);
   int GetWidth() const { return width_; }
   int GetHeight() const { return height_; }
-
+  void SetUseNearestInterpolation(const bool use);
+  bool GetUseNearestInterpolation() const;
  private:
   void DestroyTexture();
 
@@ -29,6 +30,7 @@ class Texture {
   int width_{0};
   int height_{0};
   bool texture_created_{false};
+  bool use_nearest_{false};
 };
 
 class Image {

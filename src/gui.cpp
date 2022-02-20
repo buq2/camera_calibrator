@@ -107,6 +107,14 @@ void Texture::SetTexture(const cv::Mat& in) {
   SetTexture(in.cols, in.rows, in.data, chans == 3);
 }
 
+void Texture::SetUseNearestInterpolation(const bool use) {
+  use_nearest_ = use;
+}
+
+bool Texture::GetUseNearestInterpolation() const {
+  return use_nearest_;
+}
+
 void Texture::SetTexture(const int image_width, const int image_height,
                          const unsigned char* image_data, const bool rgb) {
   if (!texture_created_) {
@@ -118,8 +126,9 @@ void Texture::SetTexture(const int image_width, const int image_height,
   glBindTexture(GL_TEXTURE_2D, p_->image_texture_);
 
   // Setup filtering parameters for display
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  const auto interp = use_nearest_ ? GL_NEAREST : GL_LINEAR;
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, interp);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, interp);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
                   GL_CLAMP_TO_EDGE);  // This is required on WebGL for non
                                       // power-of-two textures
@@ -271,6 +280,9 @@ void Image::CheckContextMenu() {
       file.close();
     } else if (ImGui::MenuItem("Save intensity scaled")) {
       cv::imwrite(output_filename_, GetProcessed());
+    } else if (ImGui::MenuItem("Toggle interpolation")) {
+      texture_.SetUseNearestInterpolation(!texture_.GetUseNearestInterpolation());
+      texture_.SetTexture(GetProcessed());
     }
     ImGui::EndPopup();
   }
