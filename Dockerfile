@@ -6,7 +6,7 @@ RUN sudo apt-get update && sudo apt-get install -y --no-install-recommends \
     libegl1-mesa-dev libgtk2.0-dev libgl1-mesa-dev libglu1-mesa-dev \
     libxcb-icccm4-dev libxcb-image0-dev libxcb-keysyms1-dev \
     libxcb-render-util0-dev libxcb-util-dev libxcb-xinerama0-dev \
-    libxcb-xkb-dev xkb-data xorg-dev && \
+    libxcb-xkb-dev xkb-data xorg-dev libva-dev libvdpau-dev && \
     sudo rm -rf /var/lib/apt/lists/*
 
 COPY . .
