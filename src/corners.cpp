@@ -189,8 +189,11 @@ Points2D ConernerDetector::NMS(const cv::Mat& corners, const uint8_t n,
   for (int row = half_n; row < h - half_n; ++row) {
     for (int col = half_n; col < w - half_n; ++col) {
       const auto val = corners.at<float>(row, col);
+
+      // Ensure that the center pixel has larger value than tau
       if (val < tau) continue;
 
+      // Ensure that center pixel is larger than all neighboring values
       bool fail = false;
       for (int i = -half_n; i <= half_n && !fail; ++i) {
         auto ptr = corners.ptr<float>(row + i);
@@ -233,7 +236,7 @@ void ConernerDetector::Detect(const cv::Mat& img_in) {
     corners = cv::max(corners, new_corners);
   }
   LOG_IMAGE("corners_final", corners);
-  const auto selected_corners = NMS(corners, 3, 0.025f, 5);
+  const auto selected_corners = NMS(corners, 7, 0.025f, 5);
   LOG_POINTS_2D("points_nms", selected_corners);
 
   // Refinement
