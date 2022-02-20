@@ -3,9 +3,11 @@
 #include <SDL.h>
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
+#include <opencv2/imgcodecs.hpp>
 #define IMGUI_IMPL_OPENGL_LOADER_GLEW
 
 // About Desktop OpenGL function loaders:
@@ -243,8 +245,35 @@ void Image::DisplayImage() {
   // CheckMouse must be called after texture_.Display and before EndChild
   CheckMouse();
 
+  CheckContextMenu();
+
   // End child window/scroll area
   ImGui::EndChild();
+}
+void Image::CheckContextMenu() {
+  if (ImGui::BeginPopupContextWindow()) {
+    ImGui::InputTextWithHint("Output filename", "Enter filename", output_filename_, kOutputFilenameLength);
+    if (ImGui::MenuItem("Save original")) {
+      cv::imwrite(output_filename_, original_data_);
+    } else if (ImGui::MenuItem("Save original, simple raw")) {
+      // Save image in a format that is easy to load in any other language
+      // which might not have good suport for float images/tiffs.
+      cv::Mat raw;
+      original_data_.convertTo(raw, CV_32F);
+      float h = static_cast<float>(raw.rows);
+      float w = static_cast<float>(raw.cols);
+      float c = static_cast<float>(raw.channels());
+      std::ofstream file(output_filename_, std::ios::out | std::ios::binary);
+      file.write((char *)&h,sizeof(float));
+      file.write((char *)&w,sizeof(float));
+      file.write((char *)&c,sizeof(float));
+      file.write((char *)raw.data, raw.step[0] * h);
+      file.close();
+    } else if (ImGui::MenuItem("Save intensity scaled")) {
+      cv::imwrite(output_filename_, GetProcessed());
+    }
+    ImGui::EndPopup();
+  }
 }
 
 void Image::Display() {

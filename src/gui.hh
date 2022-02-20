@@ -61,6 +61,7 @@ class Image {
 
  private:
   void CheckMouse();
+  void CheckContextMenu();
   void DisplayImage();
   void DisplayInfoWidgets();
   void DisplayIntensityClampWidgets();
@@ -74,6 +75,8 @@ class Image {
   Texture texture_;
   std::function<void()> draw_fun_;
   cv::Mat original_data_;
+  static constexpr size_t kOutputFilenameLength = 1024;
+  char output_filename_[kOutputFilenameLength] = {0};
   float min_displayed_{0.0f};
   float max_displayed_{255.0f};
   float data_min_{0.0f};
