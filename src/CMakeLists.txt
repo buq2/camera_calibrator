@@ -81,6 +81,13 @@ target_link_libraries(test_geometry
     calibrator
     )
 
+add_executable(test_common
+    test_common.cpp)
+
+target_link_libraries(test_common
+    Catch2::Catch2
+    )
+
 include(CTest)
 include(Catch)
 catch_discover_tests(test_calibrator)
