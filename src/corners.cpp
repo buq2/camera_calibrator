@@ -2,6 +2,7 @@
 #include <Eigen/Core>
 #include <opencv2/imgproc.hpp>
 #include "log_image.hh"
+#include "log_plot.hh"
 #include <optional>
 
 using namespace calibrator;

@@ -5,6 +5,7 @@
 #include "gui.hh"
 #include "imgui.h"
 #include "log_image.hh"
+#include "log_plot.hh"
 #include "opencv2/imgproc.hpp"
 #include "scene.hh"
 
@@ -83,6 +84,7 @@ int main(int argc, char *argv[]) {
     scene.Render();
 
     ImageLog::Get().Display();
+    PlotLog::Get().Display();
   })) {
   }
 

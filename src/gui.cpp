@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include "imgui.h"
+#include "implot.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 #include <opencv2/imgcodecs.hpp>
@@ -539,11 +540,19 @@ bool GuiWindow::Initialize() {
   // Setup Dear ImGui context
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+  ImPlot::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
 
   // Allow movement of windows only from title bar. This way we can use
   // mouse drag etc for other purposes
   io.ConfigWindowsMoveFromTitleBarOnly = true;
+
+  // Do not crash with large number of vertexes
+  // Not sure if current backend supports this, but seems to be
+  // able to prevent the crash. Other option would be defining
+  // ImDrawIdx, but this is not supported with the conan
+  // package.
+  io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
@@ -560,6 +569,7 @@ void GuiWindow::Uninit() {
   // Cleanup
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplSDL2_Shutdown();
+  ImPlot::DestroyContext();
   ImGui::DestroyContext();
 
   SDL_GL_DeleteContext(p_->gl_context);

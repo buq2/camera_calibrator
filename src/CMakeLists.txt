@@ -24,12 +24,13 @@ target_link_libraries(corners
     PUBLIC
     opencv::core
     opencv::imgproc
-    log_image)
+    log_gui)
 
 
 FIND_PACKAGE(SDL2 REQUIRED)
 FIND_PACKAGE(GLEW REQUIRED)
 FIND_PACKAGE(imgui REQUIRED)
+FIND_PACKAGE(implot REQUIRED)
 SET(IMGUI_BINDINGS_DIR ${imgui_RES_DIRS}/bindings/)
 
 add_library(gui
@@ -43,6 +44,7 @@ target_link_libraries(gui
     SDL2::SDL2
     GLEW::GLEW
     imgui::imgui
+    implot::implot
     opencv::core  
     opencv::imgproc
     opencv::highgui
@@ -51,9 +53,10 @@ TARGET_INCLUDE_DIRECTORIES(gui
     PUBLIC ${IMGUI_BINDINGS_DIR}
     )
 
-add_library(log_image
-    log_image.cpp log_image.cpp)
-target_link_libraries(log_image
+add_library(log_gui
+    log_image.cpp log_plot.cpp
+    )
+target_link_libraries(log_gui
     gui)
 
 ADD_EXECUTABLE(test_gui
@@ -62,7 +65,7 @@ ADD_EXECUTABLE(test_gui
 
 TARGET_LINK_LIBRARIES(test_gui
     gui
-    log_image
+    log_gui
     corners
     )
 
