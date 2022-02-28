@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vector>
-#include <Iterator>
 
 template <typename T>
 class CircularBuffer {
