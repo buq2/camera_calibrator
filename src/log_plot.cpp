@@ -11,9 +11,11 @@ PlotLog& PlotLog::Get() {
 
 void PlotLog::Log(const std::string& name, const double val) {
   std::scoped_lock lock(mutex_);
-  auto &cb = data_[name];
+  auto &pd = data_[name];
+  auto &cb = pd.points;
   if (cb.capacity() == 0) {
     cb.reserve(default_plot_size_);
+    pd.earliest_index = index_;
   }
   cb.push_back({index_, val});
   ++index_;
@@ -49,12 +51,14 @@ void DisplayList(const std::string& name, const T& iterable,
   }
 }
 
-std::tuple<std::vector<double>, std::vector<double>> PlotLog::GetData(const std::string sel_plot) {
-  const auto &cb = data_[sel_plot];
+std::tuple<std::vector<double>, std::vector<double>, std::string> PlotLog::GetData(const std::string sel_plot) {
+  const auto &pd = data_[sel_plot];
+  const auto &cb = pd.points;
   std::vector<double> x;
   std::vector<double> y;
 
   const auto &xaxis = selected_x_data_[sel_plot];
+  const std::string plot_name = sel_plot + " " + xaxis;
   if (xaxis == "" || xaxis == "<index>") {
     for (const auto &p : cb) {
       x.push_back(static_cast<double>(p.index));
@@ -62,28 +66,41 @@ std::tuple<std::vector<double>, std::vector<double>> PlotLog::GetData(const std:
     }
   } else {
     // Use some other plot as x-axis
-    const auto &cb_x = data_[xaxis];
-    auto comp = [](const auto &point, const auto &index) {
-      return point.index < index;
-    };
-    auto it_x = cb_x.begin();
-    for (size_t i = 0; i < cb.size(); ++i) {
-      const auto &p = cb[i];
-      const auto idx = p.index;
+    const auto &pd_x = data_[xaxis];
+    const auto &cb_x = pd_x.points;
+    
+    auto fill_data = [](const auto &cb_x, const auto &cb_y, auto &x, auto &y) {
+      auto comp = [](const auto &point, const auto &index) {
+        return point.index < index;
+      };
+      
+      auto it_x = cb_x.begin();
+      for (size_t i = 0; i < cb_y.size(); ++i) {
+        const auto &p = cb_y[i];
+        const auto idx = p.index;
 
-      const auto it = std::lower_bound(it_x, cb_x.end(), idx, comp);
-      if (it == cb_x.end()) {
-        break;
+        const auto it = std::lower_bound(it_x, cb_x.end(), idx, comp);
+        if (it == cb_x.end()) {
+          break;
+        }
+        // No need to search earlier points again
+        it_x = it;
+
+        x.push_back(it->value);
+        y.push_back(p.value);
       }
-      // No need to earlier points further
-      it_x = it;
+    };
 
-      x.push_back(it->value);
-      y.push_back(p.value);
+    if (pd_x.earliest_index < pd.earliest_index) {
+      // x values were plotted first -> for each y, use lower bound to find matching x
+      fill_data(cb_x, cb, x, y);
+    } else {
+      // y values were plotted first -> for each x, use lower bound to find matching y
+      fill_data(cb, cb_x, y, x);
     }
   }
 
-  return {x,y};
+  return {x,y,plot_name};
 }
 
 
@@ -120,14 +137,14 @@ void PlotLog::Display() {
       selected_x_data_[sel_plot] = *selected_x_data.begin();
     }
 
-    const auto &[x,y] = GetData(sel_plot);
+    const auto &[x,y,name] = GetData(sel_plot);
 
     const auto &type = types_[sel_plot];
     const auto num = static_cast<int>(x.size());
     if (type == "line") {
-      ImPlot::PlotLine(sel_plot.c_str(), x.data(), y.data(), num);
+      ImPlot::PlotLine(name.c_str(), x.data(), y.data(), num);
     } else if (type == "scatter" || type == "") {
-      ImPlot::PlotScatter(sel_plot.c_str(), x.data(), y.data(), num);
+      ImPlot::PlotScatter(name.c_str(), x.data(), y.data(), num);
     }
     
   }
