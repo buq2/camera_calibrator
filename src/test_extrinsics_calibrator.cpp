@@ -37,8 +37,16 @@ TEST_CASE("simple extrinsics", "[extrinsics_calibrator]")
   std::vector<Eigen::Affine3f, Eigen::aligned_allocator<Eigen::Affine3f>> camera_T_rigs;
   camera_T_rigs.push_back(Eigen::Affine3f::Identity());
   constexpr int num_cams = 2;
-  constexpr int num_frames = 100;
-  constexpr int num_points_per_frame = 40;
+  constexpr int num_frames = 1000;
+  constexpr int num_points_per_frame = 4;
+
+  // Noise added to measurements
+  constexpr float kCamTRigTranslationDistortion = 0.005f;
+  constexpr float kCamTRigRotationDistortionDeg = 0.1f;
+  constexpr float kRigTWorldTranslationDistortion = 0.02f;
+  constexpr float kRigTWorldRotationDistortionDeg = 1.0f;
+  constexpr float k2dPointError = 2.0f/500.0f;
+  constexpr float k3dPointError = 0.001f;
 
   std::mt19937 gen{0};
   std::uniform_real_distribution<float> rand_trans_rig(-0.03f, 0.03f);
@@ -57,7 +65,7 @@ TEST_CASE("simple extrinsics", "[extrinsics_calibrator]")
       camera_T_rigs_distorted.push_back(cam_T_rig);
       calib.AddCameraTRig(cam_T_rig, true);
     } else {
-      auto cam_T_rig_distorted = DistortTransformation(cam_T_rig, gen, 0.000f, 0.0f);
+      auto cam_T_rig_distorted = DistortTransformation(cam_T_rig, gen, kCamTRigTranslationDistortion, kCamTRigRotationDistortionDeg);
       camera_T_rigs_distorted.push_back(cam_T_rig_distorted);
       calib.AddCameraTRig(cam_T_rig_distorted);
     }
@@ -65,8 +73,8 @@ TEST_CASE("simple extrinsics", "[extrinsics_calibrator]")
 
   std::uniform_real_distribution<float> rand_trans(0.3f, 1.0f);
   std::uniform_real_distribution<float> rand_point_trans(-0.2f, 0.2f);
-  std::uniform_real_distribution<float> rand_point_2d_err(-0.0000f, 0.0000f);
-  std::uniform_real_distribution<float> rand_point_3d_err(-0.000f, 0.0000f);
+  std::uniform_real_distribution<float> rand_point_2d_err(-k2dPointError, k2dPointError);
+  std::uniform_real_distribution<float> rand_point_3d_err(-k3dPointError, k3dPointError);
   for (int i_frame = 0; i_frame < num_frames; ++i_frame)
   {
     Eigen::Affine3f rig_T_world = Eigen::Affine3f::Identity();
@@ -82,7 +90,7 @@ TEST_CASE("simple extrinsics", "[extrinsics_calibrator]")
     R.block<1,3>(1,0) = right;
     R.block<1,3>(2,0) = up;
 
-    const auto rig_T_world_distorted = DistortTransformation(rig_T_world, gen, 0.000f, 0.00f);
+    const auto rig_T_world_distorted = DistortTransformation(rig_T_world, gen, kRigTWorldTranslationDistortion, kRigTWorldRotationDistortionDeg);
     calib.AddObservationFrame(rig_T_world_distorted);
 
     for (int i_point = 0; i_point < num_points_per_frame; ++i_point)
@@ -107,7 +115,6 @@ TEST_CASE("simple extrinsics", "[extrinsics_calibrator]")
   }
 
   calib.Optimize();
-  std::cout << "Hmm " << std::endl;
   for (int i = 0; i < num_cams; ++i) {
     std::cout << "-----" << std::endl;;
     const auto optimized_cam = calib.GetCameraTRig(i);
