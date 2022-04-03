@@ -5,6 +5,7 @@ find_package(Catch2 REQUIRED)
 
 add_library(calibrator
     calibrator.cpp calibrator.hh
+    extrinsics_calibrator.cpp extrinsics_calibrator.hh
     data_generator.cpp data_generator.hh
     geometry.cpp geometry.hh
     )
@@ -77,6 +78,13 @@ target_link_libraries(test_calibrator
     calibrator
     )
 
+add_executable(test_extrinsics_calibrator
+    test_extrinsics_calibrator.cpp)
+target_link_libraries(test_extrinsics_calibrator
+    Catch2::Catch2
+    calibrator
+    )
+
 add_executable(test_geometry
     test_geometry.cpp)
 target_link_libraries(test_geometry
@@ -94,4 +102,5 @@ target_link_libraries(test_common
 include(CTest)
 include(Catch)
 catch_discover_tests(test_calibrator)
+catch_discover_tests(test_extrinsics_calibrator)
 catch_discover_tests(test_geometry)
