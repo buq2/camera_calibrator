@@ -202,10 +202,11 @@ void ExtrinsicsCalibrator::Optimize() {
     q.z() = static_cast<float>(param_q_camera_T_rig[i][3]);
 
     camera_T_rig.linear() = q.normalized().toRotationMatrix().cast<float>();
-    auto &t = camera_T_rig.translation();
-    t(0) = static_cast<float>(param_t_camera_T_rig[i][0]);
-    t(1) = static_cast<float>(param_t_camera_T_rig[i][1]);
-    t(2) = static_cast<float>(param_t_camera_T_rig[i][2]);
+    camera_T_rig.translation() = Eigen::Vector3f{
+      static_cast<float>(param_t_camera_T_rig[i][0]),
+      static_cast<float>(param_t_camera_T_rig[i][1]),
+      static_cast<float>(param_t_camera_T_rig[i][2])
+    };
   }
 
   for (size_t i = 0; i < num_observation_frames; ++i) {
@@ -216,10 +217,11 @@ void ExtrinsicsCalibrator::Optimize() {
     q.y() = static_cast<float>(param_q_rig_T_world[i][2]);
     q.z() = static_cast<float>(param_q_rig_T_world[i][3]);
 
-    auto &t = rig_T_world.translation();
-    t(0) = static_cast<float>(param_t_rig_T_world[i][0]);
-    t(1) = static_cast<float>(param_t_rig_T_world[i][1]);
-    t(2) = static_cast<float>(param_t_rig_T_world[i][2]);
+    rig_T_world.translation() = Eigen::Vector3f{
+      static_cast<float>(param_t_rig_T_world[i][0]),
+      static_cast<float>(param_t_rig_T_world[i][1]),
+      static_cast<float>(param_t_rig_T_world[i][2])
+    };
   }
 }
 

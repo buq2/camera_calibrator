@@ -21,10 +21,11 @@ Eigen::Affine3f DistortTransformation(const Eigen::Affine3f &T, std::mt19937 &ge
   Eigen::Matrix3f R = T_distorted.linear();
   T_distorted.linear() = R * R_err;
 
-  auto &t = T_distorted.translation();
+  Eigen::Vector3f t;
   t[0] += rand_trans_err(gen);
   t[1] += rand_trans_err(gen);
   t[2] += rand_trans_err(gen);
+  T_distorted.translation() = t;
 
   return T_distorted;
 }
@@ -78,17 +79,19 @@ TEST_CASE("simple extrinsics", "[extrinsics_calibrator]")
   for (int i_frame = 0; i_frame < num_frames; ++i_frame)
   {
     Eigen::Affine3f rig_T_world = Eigen::Affine3f::Identity();
-    auto &t = rig_T_world.translation();
+    Eigen::Vector3f t;
     t(0) = rand_trans(gen);
     t(1) = rand_trans(gen);
     t(2) = rand_trans(gen);
+    rig_T_world.translation() = t;
     const auto forward = t.normalized();
     const auto right = Eigen::Vector3f(0.0, 1.0, 0.0).cross(forward).normalized();
     const auto up = forward.cross(right);
-    auto &R = rig_T_world.linear();
+    Eigen::Matrix3f R;
     R.block<1,3>(0,0) = forward;
     R.block<1,3>(1,0) = right;
     R.block<1,3>(2,0) = up;
+    rig_T_world.linear() = R;
 
     const auto rig_T_world_distorted = DistortTransformation(rig_T_world, gen, kRigTWorldTranslationDistortion, kRigTWorldRotationDistortionDeg);
     calib.AddObservationFrame(rig_T_world_distorted);
