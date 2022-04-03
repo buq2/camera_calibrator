@@ -75,7 +75,7 @@ TEST_CASE("simple extrinsics", "[extrinsics_calibrator]")
     t(1) = rand_trans(gen);
     t(2) = rand_trans(gen);
     const auto forward = t.normalized();
-    const auto right = Eigen::Vector3f(0.0, 1.0, 0.0).cross(forward);
+    const auto right = Eigen::Vector3f(0.0, 1.0, 0.0).cross(forward).normalized();
     const auto up = forward.cross(right);
     auto &R = rig_T_world.linear();
     R.block<1,3>(0,0) = forward;
