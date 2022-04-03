@@ -149,8 +149,8 @@ void ExtrinsicsCalibrator::Optimize() {
 
       errors.emplace_back(p2d.x(), p2d.y());
       cost_functions.emplace_back(&errors.back(), ceres::DO_NOT_TAKE_OWNERSHIP);
-      //auto loss_function = new ceres::LossFunctionWrapper(new ceres::HuberLoss(0.01), ceres::TAKE_OWNERSHIP);
-      problem.AddResidualBlock(&cost_functions.back(), nullptr, 
+      auto loss_function = new ceres::LossFunctionWrapper(new ceres::HuberLoss(3.0f/500.0f), ceres::TAKE_OWNERSHIP);
+      problem.AddResidualBlock(&cost_functions.back(), loss_function, 
                                 current_q_rig_T_world, current_t_rig_T_world,
                                 current_q_camera_T_rig, current_t_camera_T_rig,
                                 current_p3d);
