@@ -16,7 +16,7 @@ Eigen::Affine3f DistortTransformation(const Eigen::Affine3f &T,
   std::uniform_real_distribution<float> rand_rot_angle_err(-rotation_error_deg,
                                                            rotation_error_deg);
 
-  auto T_distorted = T;
+  Eigen::Affine3f T_distorted;
 
   constexpr auto pi = 3.141592653589793f;
   const auto R_err = Eigen::AngleAxisf(rand_rot_angle_err(gen) / 180.0f * pi,
@@ -26,10 +26,9 @@ Eigen::Affine3f DistortTransformation(const Eigen::Affine3f &T,
                      Eigen::AngleAxisf(rand_rot_angle_err(gen) / 180.0f * pi,
                                        Eigen::Vector3f::UnitZ());
 
-  Eigen::Matrix3f R = T_distorted.linear();
-  T_distorted.linear() = R * R_err;
+  T_distorted.linear() = T.linear() * R_err;
 
-  Eigen::Vector3f t;
+  Eigen::Vector3f t = T.translation();
   t[0] += rand_trans_err(gen);
   t[1] += rand_trans_err(gen);
   t[2] += rand_trans_err(gen);
