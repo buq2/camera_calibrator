@@ -1,6 +1,7 @@
 #include "corners.hh"
 #include <Eigen/Core>
 #include <opencv2/imgproc.hpp>
+#include <optional>
 #include "log_image.hh"
 #include "log_plot.hh"
 #include <optional>
@@ -125,9 +126,8 @@ std::tuple<cv::Mat, cv::Mat> ConernerDetector::FilterSobel(
   // Could try Scharr too
   // cv::Sobel(img_gray, gx, -1, 1, 0);
   // cv::Sobel(img_gray, gy, -1, 0, 1);
-  const cv::Matx33f kernel_gx(1.0f, 0.0f, -1.0f,
-                              1.0f, 0.0f, -1.0f,
-                              1.0f, 0.0f, -1.0f);
+  const cv::Matx33f kernel_gx(1.0f, 0.0f, -1.0f, 1.0f, 0.0f, -1.0f, 1.0f, 0.0f,
+                              -1.0f);
 
   cv::filter2D(img_gray, gx, -1, kernel_gx);
   cv::filter2D(img_gray, gy, -1, kernel_gx.t());
@@ -145,7 +145,7 @@ cv::Mat ConernerDetector::AngleFromSobel(const cv::Mat& gx, const cv::Mat& gy) {
     for (int col = 0; col < angle.cols; ++col) {
       auto angle = atan2f(gy_row[col], gx_row[col]);
       if (angle < 0) angle += pi;
-      if (angle > pi) angle -= pi; // TODO: Check if we hit this
+      if (angle > pi) angle -= pi;  // TODO: Check if we hit this
       angle_row[col] = angle;
     }
   }
@@ -273,31 +273,33 @@ ConernerDetector::ScoredCorners ConernerDetector::ScoreCorners(
 }
 
 struct HistMode {
-  explicit HistMode(int idx, float value):idx(idx), value(value) {}
+  explicit HistMode(int idx, float value) : idx(idx), value(value) {}
   int idx{0};
   float value{0.0f};
 
-  bool operator<(const HistMode& other) const {return value < other.value;}
-  bool operator>(const HistMode& other) const {return value > other.value;}
+  bool operator<(const HistMode& other) const { return value < other.value; }
+  bool operator>(const HistMode& other) const { return value > other.value; }
 };
 
-std::vector<HistMode> FindModesMeanShift(const std::vector<float>& hist, float sigma) {
+std::vector<HistMode> FindModesMeanShift(const std::vector<float>& hist,
+                                         float sigma) {
   // Convolve histogram with normpdf with wrap around semantics
   const auto n_hist = static_cast<int>(hist.size());
   std::vector<float> hist_smoothed(n_hist, 0.0f);
-  const int rsigma2 = static_cast<int>(round(sigma*2));
+  const int rsigma2 = static_cast<int>(round(sigma * 2));
 
-  auto wrapmod = [](int i,int len) {
+  auto wrapmod = [](int i, int len) {
     // Wrap negative number such as -1 to len-1 etc. Assumes that i is never
     // too far negative :)
-    return (i+len) % len;
+    return (i + len) % len;
   };
 
   for (int i = 0; i < n_hist; ++i) {
     for (int j = -rsigma2; j <= rsigma2; ++j) {
       // Wrap idx around the histogram
-      const int idx = wrapmod(i+j, n_hist);
-      hist_smoothed[i] += hist[idx] * normpdf(static_cast<float>(j), 0.0f, sigma);
+      const int idx = wrapmod(i + j, n_hist);
+      hist_smoothed[i] +=
+          hist[idx] * normpdf(static_cast<float>(j), 0.0f, sigma);
     }
   }
 
@@ -321,8 +323,8 @@ std::vector<HistMode> FindModesMeanShift(const std::vector<float>& hist, float s
   std::vector<HistMode> modes;
   for (int i = 0; i < n_hist; ++i) {
     const auto h0 = hist_smoothed[i];
-    const auto j_prev = wrapmod(i-1, n_hist);
-    const auto j_next = (i+1)%n_hist;
+    const auto j_prev = wrapmod(i - 1, n_hist);
+    const auto j_next = (i + 1) % n_hist;
     const auto h_prev = hist_smoothed[j_prev];
     const auto h_next = hist_smoothed[j_next];
 
@@ -338,12 +340,22 @@ std::vector<HistMode> FindModesMeanShift(const std::vector<float>& hist, float s
 }
 
 /// Returns edge orientation angles in sorted order
-std::optional<std::array<float,2>> EdgeOrientation(const Point2D& p, const int r, const cv::Mat& angle, const cv::Mat& weight) {
+std::optional<std::array<float, 2>> EdgeOrientation(const Point2D& p,
+                                                    const int r,
+                                                    const cv::Mat& angle,
+                                                    const cv::Mat& weight) {
   constexpr int num_bins = 32;
   std::vector<float> hist(num_bins);
 
   const auto w = angle.cols;
   const auto h = angle.rows;
+
+  LOG_POINT("x", p.x());
+  LOG_POINT("y", p.y());
+
+  if (p.x() > 195 && p.x() < 200 && p.y() > 177 && p.y() < 181) {
+    std::cout << "wehaa" << std::endl;
+  }
 
   assert(weight.cols == w);
   assert(weight.rows == h);
@@ -356,20 +368,21 @@ std::optional<std::array<float,2>> EdgeOrientation(const Point2D& p, const int r
   const int y = static_cast<int>(roundf(p(1)));
 
   constexpr auto pi = 3.141592653589793f;
-  for (int i_y = std::max(0, y-r); i_y < std::min(h, y+r); ++i_y) {
+  for (int i_y = std::max(0, y - r); i_y < std::min(h, y + r); ++i_y) {
     auto* ptr_angle = angle.ptr<float>(i_y);
     auto* ptr_weight = weight.ptr<float>(i_y);
-    for (int i_x = std::max(0, x-r); i_x < std::min(w, x+r); ++i_x) {
+    for (int i_x = std::max(0, x - r); i_x < std::min(w, x + r); ++i_x) {
       auto a = ptr_angle[i_x];
       
       // TODO: This is probably not needed as angles are already in range [0 pi]
-      a += pi/2.0f;
+      a += pi / 2.0f;
       if (a >= pi) {
         a -= pi;
       }
 
-      const auto binf = a/(pi/num_bins);
-      const auto bin = std::max<int>(std::min<int>(static_cast<int>(binf), num_bins-1), 0);
+      const auto binf = a / (pi / num_bins);
+      const auto bin =
+          std::max<int>(std::min<int>(static_cast<int>(binf), num_bins - 1), 0);
 
       hist[bin] += ptr_weight[i_x];
     }
@@ -386,14 +399,14 @@ std::optional<std::array<float,2>> EdgeOrientation(const Point2D& p, const int r
   const auto m0 = modes[0];
   const auto m1 = modes[1];
   // Compute mode angles
-  auto angle0 = m0.idx*pi/num_bins;
-  auto angle1 = m1.idx*pi/num_bins;
+  auto angle0 = m0.idx * pi / num_bins;
+  auto angle1 = m1.idx * pi / num_bins;
   // Sort
   if (angle0 > angle1) std::swap(angle0, angle1);
-  const auto delta_angle = std::min(angle1-angle0, angle0+pi-angle1);
+  const auto delta_angle = std::min(angle1 - angle0, angle0 + pi - angle1);
 
   if (delta_angle <= 0.3) return std::nullopt;
-  return std::array<float,2>{angle0, angle1};
+  return std::array<float, 2>{angle0, angle1};
 }
 
 Points2D ConernerDetector::RefineCorners(const Points2D& corners,
@@ -402,7 +415,8 @@ Points2D ConernerDetector::RefineCorners(const Points2D& corners,
   Points2D out;
   
   for (const auto& corner : corners) {
-    const auto orientation = EdgeOrientation(corner, radius, gxgyaw.angle, gxgyaw.weight);
+    const auto orientation =
+        EdgeOrientation(corner, radius, gxgyaw.angle, gxgyaw.weight);
     if (!orientation) continue;
 
     out.push_back(corner);

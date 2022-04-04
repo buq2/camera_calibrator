@@ -22,6 +22,7 @@ class Texture {
   int GetHeight() const { return height_; }
   void SetUseNearestInterpolation(const bool use);
   bool GetUseNearestInterpolation() const;
+
  private:
   void DestroyTexture();
 

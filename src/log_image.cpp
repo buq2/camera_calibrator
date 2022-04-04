@@ -23,7 +23,7 @@ void DisplayList(const std::string& name, const T& iterable,
                  std::string& selected) {
   std::string full_name("## ");
   full_name += name;
-  
+
   // TODO: Do not hardcode the margin
   // Without the margin two or more lists will take too much
   // space and horizontal scroll bar will be created

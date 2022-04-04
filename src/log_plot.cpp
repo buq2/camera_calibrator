@@ -1,15 +1,15 @@
 #include "log_plot.hh"
+#include <algorithm>
+#include <map>
 #include "imgui.h"
 #include "implot.h"
-#include <map>
-#include <algorithm>
 
-PlotLog& PlotLog::Get() {
+PlotLog &PlotLog::Get() {
   static PlotLog logger;
   return logger;
 }
 
-void PlotLog::Log(const std::string& name, const double val) {
+void PlotLog::Log(const std::string &name, const double val) {
   std::scoped_lock lock(mutex_);
   auto &pd = data_[name];
   auto &cb = pd.points;
@@ -22,11 +22,11 @@ void PlotLog::Log(const std::string& name, const double val) {
 }
 
 template <typename T>
-void DisplayList(const std::string& name, const T& iterable,
-                 std::set<std::string>& selected) {
+void DisplayList(const std::string &name, const T &iterable,
+                 std::set<std::string> &selected) {
   std::string full_name("## ");
   full_name += name;
-  
+
   // TODO: Do not hardcode the margin
   // Without the margin two or more lists will take too much
   // space and horizontal scroll bar will be created
@@ -34,7 +34,7 @@ void DisplayList(const std::string& name, const T& iterable,
   if (ImGui::BeginListBox(full_name.c_str(),
                           ImVec2(ImGui::GetWindowWidth() / 2 - margin,
                                  5 * ImGui::GetTextLineHeightWithSpacing()))) {
-    for (const auto& it : iterable) {
+    for (const auto &it : iterable) {
       const bool is_selected = selected.count(it.first);
       if (ImGui::Selectable(it.first.c_str(), is_selected)) {
         if (selected.count(it.first)) {
@@ -51,7 +51,8 @@ void DisplayList(const std::string& name, const T& iterable,
   }
 }
 
-std::tuple<std::vector<double>, std::vector<double>, std::string> PlotLog::GetData(const std::string sel_plot) {
+std::tuple<std::vector<double>, std::vector<double>, std::string>
+PlotLog::GetData(const std::string sel_plot) {
   const auto &pd = data_[sel_plot];
   const auto &cb = pd.points;
   std::vector<double> x;
@@ -68,12 +69,12 @@ std::tuple<std::vector<double>, std::vector<double>, std::string> PlotLog::GetDa
     // Use some other plot as x-axis
     const auto &pd_x = data_[xaxis];
     const auto &cb_x = pd_x.points;
-    
+
     auto fill_data = [](const auto &cb_x, const auto &cb_y, auto &x, auto &y) {
       auto comp = [](const auto &point, const auto &index) {
         return point.index < index;
       };
-      
+
       auto it_x = cb_x.begin();
       for (size_t i = 0; i < cb_y.size(); ++i) {
         const auto &p = cb_y[i];
@@ -92,17 +93,18 @@ std::tuple<std::vector<double>, std::vector<double>, std::string> PlotLog::GetDa
     };
 
     if (pd_x.earliest_index < pd.earliest_index) {
-      // x values were plotted first -> for each y, use lower bound to find matching x
+      // x values were plotted first -> for each y, use lower bound to find
+      // matching x
       fill_data(cb_x, cb, x, y);
     } else {
-      // y values were plotted first -> for each x, use lower bound to find matching y
+      // y values were plotted first -> for each x, use lower bound to find
+      // matching y
       fill_data(cb, cb_x, y, x);
     }
   }
 
-  return {x,y,plot_name};
+  return {x, y, plot_name};
 }
-
 
 void PlotLog::Display() {
   std::scoped_lock lock(mutex_);
@@ -113,12 +115,12 @@ void PlotLog::Display() {
   DisplayList("Plots", data_, selected_plots_);
 
   // TODO: Not very nice way to create the plot types.
-  std::unordered_map<std::string, int> plot_types{{"scatter",0}, {"line",0}};
+  std::unordered_map<std::string, int> plot_types{{"scatter", 0}, {"line", 0}};
   std::set<std::string> selected_plot_type;
   DisplayList("Plot types", plot_types, selected_plot_type);
 
   // TODO: Same, use set instead
-  std::map<std::string, int> x_data{{"<index>",0}};
+  std::map<std::string, int> x_data{{"<index>", 0}};
   for (const auto &d : data_) {
     x_data[d.first] = 0;
   }
@@ -137,7 +139,7 @@ void PlotLog::Display() {
       selected_x_data_[sel_plot] = *selected_x_data.begin();
     }
 
-    const auto &[x,y,name] = GetData(sel_plot);
+    const auto &[x, y, name] = GetData(sel_plot);
 
     const auto &type = types_[sel_plot];
     const auto num = static_cast<int>(x.size());
@@ -146,7 +148,6 @@ void PlotLog::Display() {
     } else if (type == "scatter" || type == "") {
       ImPlot::PlotScatter(name.c_str(), x.data(), y.data(), num);
     }
-    
   }
   ImPlot::EndPlot();
 

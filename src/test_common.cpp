@@ -11,9 +11,9 @@ TEST_CASE("simple", "[circular_buffer]") {
 
   for (int i = 0; i < 5; ++i) {
     cb.push_back(i);
-    REQUIRE(cb.size() == i+1);
+    REQUIRE(cb.size() == i + 1);
   }
-  
+
   REQUIRE(cb.full());
   for (int i = 0; i < 5; ++i) {
     REQUIRE(cb[i] == i);
@@ -23,14 +23,13 @@ TEST_CASE("simple", "[circular_buffer]") {
   REQUIRE(cb.full());
   REQUIRE(cb.size() == cap);
   for (int i = 0; i < 5; ++i) {
-    REQUIRE(cb[i] == i+1);
+    REQUIRE(cb[i] == i + 1);
   }
 
   cb.push_back(6);
   REQUIRE(cb.full());
   REQUIRE(cb.size() == cap);
   for (int i = 0; i < 5; ++i) {
-    REQUIRE(cb[i] == i+2);
+    REQUIRE(cb[i] == i + 2);
   }
 }
-

@@ -1,19 +1,21 @@
 #pragma once
 
-#include <string>
-#include "circular_buffer.hh"
 #include <mutex>
 #include <set>
+#include <string>
 #include <unordered_map>
+#include "circular_buffer.hh"
 
 class PlotLog {
  public:
   static PlotLog& Get();
   void Log(const std::string& name, const double val);
   void Display();
+
  private:
   PlotLog() {}
-  std::tuple<std::vector<double>, std::vector<double>, std::string> GetData(const std::string sel_plot);
+  std::tuple<std::vector<double>, std::vector<double>, std::string> GetData(
+      const std::string sel_plot);
 
   std::set<std::string> selected_plots_;
   std::mutex mutex_;
@@ -36,8 +38,8 @@ class PlotLog {
   };
   std::unordered_map<std::string, std::string> types_;
   std::unordered_map<std::string, std::string> selected_x_data_;
-  std::unordered_map<std::string, PlotData > data_;
-}; // class PlotLog
+  std::unordered_map<std::string, PlotData> data_;
+};  // class PlotLog
 
 #define LOG_POINT(name, val)       \
   do {                             \

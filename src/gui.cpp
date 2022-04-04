@@ -2,13 +2,13 @@
 
 #include <SDL.h>
 #include <algorithm>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <opencv2/imgcodecs.hpp>
 #include "imgui.h"
-#include "implot.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
-#include <opencv2/imgcodecs.hpp>
+#include "implot.h"
 #define IMGUI_IMPL_OPENGL_LOADER_GLEW
 
 // About Desktop OpenGL function loaders:
@@ -108,13 +108,9 @@ void Texture::SetTexture(const cv::Mat& in) {
   SetTexture(in.cols, in.rows, in.data, chans == 3);
 }
 
-void Texture::SetUseNearestInterpolation(const bool use) {
-  use_nearest_ = use;
-}
+void Texture::SetUseNearestInterpolation(const bool use) { use_nearest_ = use; }
 
-bool Texture::GetUseNearestInterpolation() const {
-  return use_nearest_;
-}
+bool Texture::GetUseNearestInterpolation() const { return use_nearest_; }
 
 void Texture::SetTexture(const int image_width, const int image_height,
                          const unsigned char* image_data, const bool rgb) {
@@ -262,7 +258,8 @@ void Image::DisplayImage() {
 }
 void Image::CheckContextMenu() {
   if (ImGui::BeginPopupContextWindow()) {
-    ImGui::InputTextWithHint("Output filename", "Enter filename", output_filename_, kOutputFilenameLength);
+    ImGui::InputTextWithHint("Output filename", "Enter filename",
+                             output_filename_, kOutputFilenameLength);
     if (ImGui::MenuItem("Save original")) {
       cv::imwrite(output_filename_, original_data_);
     } else if (ImGui::MenuItem("Save original, simple raw")) {
@@ -274,15 +271,16 @@ void Image::CheckContextMenu() {
       float w = static_cast<float>(raw.cols);
       float c = static_cast<float>(raw.channels());
       std::ofstream file(output_filename_, std::ios::out | std::ios::binary);
-      file.write((char *)&h,sizeof(float));
-      file.write((char *)&w,sizeof(float));
-      file.write((char *)&c,sizeof(float));
-      file.write((char *)raw.data, raw.step[0] * h);
+      file.write((char*)&h, sizeof(float));
+      file.write((char*)&w, sizeof(float));
+      file.write((char*)&c, sizeof(float));
+      file.write((char*)raw.data, raw.step[0] * h);
       file.close();
     } else if (ImGui::MenuItem("Save intensity scaled")) {
       cv::imwrite(output_filename_, GetProcessed());
     } else if (ImGui::MenuItem("Toggle interpolation")) {
-      texture_.SetUseNearestInterpolation(!texture_.GetUseNearestInterpolation());
+      texture_.SetUseNearestInterpolation(
+          !texture_.GetUseNearestInterpolation());
       texture_.SetTexture(GetProcessed());
     }
     ImGui::EndPopup();
@@ -454,7 +452,7 @@ void Image::DisplayInfoWidgets() {
     // Reserve space
     // +X from padding?
     constexpr float margin = 2;
-    const auto h = ImGui::GetFontSize() + margin;  
+    const auto h = ImGui::GetFontSize() + margin;
     ImGui::Dummy(ImVec2(0, h * 2));
   }
 }

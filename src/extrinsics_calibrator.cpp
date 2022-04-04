@@ -4,31 +4,36 @@
 
 using namespace calibrator;
 
-size_t ExtrinsicsCalibrator::AddCameraTRig(const Eigen::Affine3f &camera_T_rig, const bool freeze) {
+size_t ExtrinsicsCalibrator::AddCameraTRig(const Eigen::Affine3f &camera_T_rig,
+                                           const bool freeze) {
   camera_T_rigs_.push_back(camera_T_rig);
-  const auto id = camera_T_rigs_.size()-1;
+  const auto id = camera_T_rigs_.size() - 1;
   if (freeze) {
     frozen_camera_T_rigs_.insert(id);
   }
   return id;
 }
 
-size_t ExtrinsicsCalibrator::AddObservationFrame(const Eigen::Affine3f &rig_T_world) {
+size_t ExtrinsicsCalibrator::AddObservationFrame(
+    const Eigen::Affine3f &rig_T_world) {
   observation_frames_.emplace_back(rig_T_world);
-  return observation_frames_.size()-1;
+  return observation_frames_.size() - 1;
 }
 
-size_t ExtrinsicsCalibrator::AddWorldPoint(const size_t frame_id, const Point3D &world_point) {
+size_t ExtrinsicsCalibrator::AddWorldPoint(const size_t frame_id,
+                                           const Point3D &world_point) {
   WorldPointInfo info;
   info.observation_frame_id = frame_id;
   info.world_point_idx = observation_frames_[frame_id].world_points.size();
   world_point_infos_.push_back(info);
 
   observation_frames_[frame_id].world_points.push_back(world_point);
-  return world_point_infos_.size()-1;
+  return world_point_infos_.size() - 1;
 }
 
-void ExtrinsicsCalibrator::AddObservation(const size_t camera_id, const size_t world_point_id, const Point2D &image_point) {
+void ExtrinsicsCalibrator::AddObservation(const size_t camera_id,
+                                          const size_t world_point_id,
+                                          const Point2D &image_point) {
   const auto &world_point_info = world_point_infos_[world_point_id];
 
   ObservationFrame::Observation observation;
@@ -36,18 +41,19 @@ void ExtrinsicsCalibrator::AddObservation(const size_t camera_id, const size_t w
   observation.image_point = image_point;
   observation.world_point_idx = world_point_info.world_point_idx;
   observation.world_point_id = world_point_id;
-  observation_frames_[world_point_info.observation_frame_id].observations.push_back(observation);
+  observation_frames_[world_point_info.observation_frame_id]
+      .observations.push_back(observation);
 }
 
 struct ReprojectionErrorExtrinsics {
-  ReprojectionErrorExtrinsics(
-      const double normalized_image_point_x, const double normalized_image_point_y)
-      : 
-        normalized_image_point_x(normalized_image_point_x), normalized_image_point_y(normalized_image_point_y) {}
+  ReprojectionErrorExtrinsics(const double normalized_image_point_x,
+                              const double normalized_image_point_y)
+      : normalized_image_point_x(normalized_image_point_x),
+        normalized_image_point_y(normalized_image_point_y) {}
   template <typename T>
-  bool operator()(const T* const q_rig_T_world, const T* const t_rig_T_world,
-                  const T* const q_camera_T_rig, const T* const t_camera_T_rig,
-                  const T* const X_world, T* residuals) const {
+  bool operator()(const T *const q_rig_T_world, const T *const t_rig_T_world,
+                  const T *const q_camera_T_rig, const T *const t_camera_T_rig,
+                  const T *const X_world, T *residuals) const {
     // Rotate and add translation to rig coordinates
     T X_rig[3];
     ceres::QuaternionRotatePoint(q_rig_T_world, X_world, X_rig);
@@ -84,8 +90,9 @@ void ExtrinsicsCalibrator::Optimize() {
   problem_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
   ceres::Problem problem(problem_options);
   std::vector<ReprojectionErrorExtrinsics> errors;
-  std::vector<ceres::AutoDiffCostFunction<ReprojectionErrorExtrinsics, num_residuals,
-                                          num_param_q, num_param_t, num_param_q, num_param_t, num_param_p3d>>
+  std::vector<ceres::AutoDiffCostFunction<
+      ReprojectionErrorExtrinsics, num_residuals, num_param_q, num_param_t,
+      num_param_q, num_param_t, num_param_p3d>>
       cost_functions;
 
   const size_t num_cameras = camera_T_rigs_.size();
@@ -93,10 +100,14 @@ void ExtrinsicsCalibrator::Optimize() {
   const size_t num_world_points = world_point_infos_.size();
 
   std::vector<std::array<double, num_param_p3d>> param_p3d(num_world_points);
-  std::vector<std::array<double, num_param_q>> param_q_camera_T_rig(num_cameras);
-  std::vector<std::array<double, num_param_t>> param_t_camera_T_rig(num_cameras);
-  std::vector<std::array<double, num_param_q>> param_q_rig_T_world(num_observation_frames);
-  std::vector<std::array<double, num_param_t>> param_t_rig_T_world(num_observation_frames);
+  std::vector<std::array<double, num_param_q>> param_q_camera_T_rig(
+      num_cameras);
+  std::vector<std::array<double, num_param_t>> param_t_camera_T_rig(
+      num_cameras);
+  std::vector<std::array<double, num_param_q>> param_q_rig_T_world(
+      num_observation_frames);
+  std::vector<std::array<double, num_param_t>> param_t_rig_T_world(
+      num_observation_frames);
 
   // Fill initial parameters
   for (size_t i = 0; i < num_cameras; ++i) {
@@ -135,31 +146,38 @@ void ExtrinsicsCalibrator::Optimize() {
   std::set<size_t> camera_T_rig_configured;
   std::set<size_t> rig_T_world_configured;
   std::set<size_t> world_point_configured;
-  for (size_t observation_frames_id = 0; observation_frames_id < observation_frames_.size(); ++observation_frames_id) {
+  for (size_t observation_frames_id = 0;
+       observation_frames_id < observation_frames_.size();
+       ++observation_frames_id) {
     const auto &frame = observation_frames_[observation_frames_id];
     for (const auto &observation : frame.observations) {
       const auto &p2d = observation.image_point;
       const auto &p3d = frame.world_points[observation.world_point_idx];
 
-      auto current_q_camera_T_rig = param_q_camera_T_rig[observation.camera_id].data();
-      auto current_t_camera_T_rig = param_t_camera_T_rig[observation.camera_id].data();
-      auto current_q_rig_T_world = param_q_rig_T_world[observation_frames_id].data();
-      auto current_t_rig_T_world = param_t_rig_T_world[observation_frames_id].data();
+      auto current_q_camera_T_rig =
+          param_q_camera_T_rig[observation.camera_id].data();
+      auto current_t_camera_T_rig =
+          param_t_camera_T_rig[observation.camera_id].data();
+      auto current_q_rig_T_world =
+          param_q_rig_T_world[observation_frames_id].data();
+      auto current_t_rig_T_world =
+          param_t_rig_T_world[observation_frames_id].data();
       auto current_p3d = param_p3d[observation.world_point_id].data();
 
       errors.emplace_back(p2d.x(), p2d.y());
       cost_functions.emplace_back(&errors.back(), ceres::DO_NOT_TAKE_OWNERSHIP);
-      auto loss_function = new ceres::LossFunctionWrapper(new ceres::HuberLoss(3.0f/500.0f), ceres::TAKE_OWNERSHIP);
-      problem.AddResidualBlock(&cost_functions.back(), loss_function, 
-                                current_q_rig_T_world, current_t_rig_T_world,
-                                current_q_camera_T_rig, current_t_camera_T_rig,
-                                current_p3d);
-      
+      auto loss_function = new ceres::LossFunctionWrapper(
+          new ceres::HuberLoss(3.0f / 500.0f), ceres::TAKE_OWNERSHIP);
+      problem.AddResidualBlock(&cost_functions.back(), loss_function,
+                               current_q_rig_T_world, current_t_rig_T_world,
+                               current_q_camera_T_rig, current_t_camera_T_rig,
+                               current_p3d);
+
       // First time we encounter the quaternions, we need to set the quaternion
       // parameterization
       if (!camera_T_rig_configured.count(observation.camera_id)) {
         problem.SetParameterization(current_q_camera_T_rig,
-                                  new ceres::QuaternionParameterization);
+                                    new ceres::QuaternionParameterization);
         camera_T_rig_configured.insert(observation.camera_id);
 
         if (frozen_camera_T_rigs_.count(observation.camera_id)) {
@@ -170,7 +188,7 @@ void ExtrinsicsCalibrator::Optimize() {
       }
       if (!rig_T_world_configured.count(observation_frames_id)) {
         problem.SetParameterization(current_q_rig_T_world,
-                                  new ceres::QuaternionParameterization);
+                                    new ceres::QuaternionParameterization);
         rig_T_world_configured.insert(observation_frames_id);
       }
       if (!world_point_configured.count(observation.world_point_id)) {
@@ -187,7 +205,7 @@ void ExtrinsicsCalibrator::Optimize() {
   options.use_inner_iterations = true;
   options.max_num_iterations = 1000;
   options.minimizer_progress_to_stdout = true;
-  options.logging_type = ceres::PER_MINIMIZER_ITERATION; //ceres::SILENT;
+  options.logging_type = ceres::PER_MINIMIZER_ITERATION;  // ceres::SILENT;
 
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
@@ -202,11 +220,10 @@ void ExtrinsicsCalibrator::Optimize() {
     q.z() = static_cast<float>(param_q_camera_T_rig[i][3]);
 
     camera_T_rig.linear() = q.normalized().toRotationMatrix().cast<float>();
-    camera_T_rig.translation() = Eigen::Vector3f{
-      static_cast<float>(param_t_camera_T_rig[i][0]),
-      static_cast<float>(param_t_camera_T_rig[i][1]),
-      static_cast<float>(param_t_camera_T_rig[i][2])
-    };
+    camera_T_rig.translation() =
+        Eigen::Vector3f{static_cast<float>(param_t_camera_T_rig[i][0]),
+                        static_cast<float>(param_t_camera_T_rig[i][1]),
+                        static_cast<float>(param_t_camera_T_rig[i][2])};
   }
 
   for (size_t i = 0; i < num_observation_frames; ++i) {
@@ -217,20 +234,17 @@ void ExtrinsicsCalibrator::Optimize() {
     q.y() = static_cast<float>(param_q_rig_T_world[i][2]);
     q.z() = static_cast<float>(param_q_rig_T_world[i][3]);
 
-    rig_T_world.translation() = Eigen::Vector3f{
-      static_cast<float>(param_t_rig_T_world[i][0]),
-      static_cast<float>(param_t_rig_T_world[i][1]),
-      static_cast<float>(param_t_rig_T_world[i][2])
-    };
+    rig_T_world.translation() =
+        Eigen::Vector3f{static_cast<float>(param_t_rig_T_world[i][0]),
+                        static_cast<float>(param_t_rig_T_world[i][1]),
+                        static_cast<float>(param_t_rig_T_world[i][2])};
   }
 }
 
-Eigen::Affine3f ExtrinsicsCalibrator::GetCameraTRig(const size_t id)
-{
+Eigen::Affine3f ExtrinsicsCalibrator::GetCameraTRig(const size_t id) {
   return camera_T_rigs_[id];
 }
 
-Eigen::Affine3f ExtrinsicsCalibrator::GetObservationFrame(const size_t id)
-{
+Eigen::Affine3f ExtrinsicsCalibrator::GetObservationFrame(const size_t id) {
   return observation_frames_[id].rig_T_world;
 }
