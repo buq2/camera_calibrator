@@ -27,6 +27,8 @@ class ExtrinsicsCalibrator {
 
   void Optimize();
 
+  void Serialize(const std::string& fname) const;
+  void Parse(const std::string& fname);
  private:
   std::vector<Eigen::Affine3f, Eigen::aligned_allocator<Eigen::Affine3f> >
       camera_T_rigs_;

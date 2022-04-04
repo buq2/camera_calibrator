@@ -2,6 +2,7 @@ find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(Catch2 REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 add_library(calibrator
     calibrator.cpp calibrator.hh
@@ -16,6 +17,7 @@ target_link_libraries(calibrator
     opencv::calib3d
     Ceres::ceres
     Eigen3::Eigen
+    nlohmann_json::nlohmann_json
     )
 
 add_library(corners

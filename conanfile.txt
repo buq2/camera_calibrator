@@ -9,6 +9,9 @@
     implot/0.13
     sdl/[>2.0.0]
     glew/[>2.0.0]
+
+    # For serialization
+    nlohmann_json/3.10.5
 [generators]
     cmake_find_package
 [options]

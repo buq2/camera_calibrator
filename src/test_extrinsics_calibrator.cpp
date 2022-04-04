@@ -134,10 +134,12 @@ TEST_CASE("simple extrinsics", "[extrinsics_calibrator]")
     }
   }
 
+  const std::string fname("serialized_extrinsic_calibration.json");
+  calib.Serialize(fname);
+  calib.Parse(fname);
   calib.Optimize();
   for (int i = 0; i < num_cams; ++i) {
     std::cout << "-----" << std::endl;
-    ;
     const auto optimized_cam = calib.GetCameraTRig(i);
     std::cout << "Original distorted cam:" << std::endl;
     std::cout << camera_T_rigs_distorted[i].matrix() << std::endl;

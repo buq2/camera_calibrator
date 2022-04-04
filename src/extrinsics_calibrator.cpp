@@ -1,8 +1,10 @@
 #include "extrinsics_calibrator.hh"
 #include "ceres/ceres.h"
 #include "ceres/rotation.h"
+#include <nlohmann/json.hpp>
 
 using namespace calibrator;
+using json = nlohmann::json;
 
 size_t ExtrinsicsCalibrator::AddCameraTRig(const Eigen::Affine3f &camera_T_rig,
                                            const bool freeze) {
@@ -248,4 +250,150 @@ Eigen::Affine3f ExtrinsicsCalibrator::GetCameraTRig(const size_t id) const {
 Eigen::Affine3f ExtrinsicsCalibrator::GetObservationFrame(
     const size_t id) const {
   return observation_frames_[id].rig_T_world;
+}
+
+void ExtrinsicsCalibrator::Serialize(const std::string& fname) const {
+  const auto serialize_transformation = [](const Eigen::Affine3f& T) {
+    json root;
+    for (const auto &val : T.matrix().reshaped()) {
+      root.push_back(val);
+    }
+    return root;
+  };
+
+  const auto serialize_vector = [](const auto& v) {
+    json root;
+    for (const auto &val : v) {
+      root.push_back(val);
+    }
+    return root;
+  };
+
+  const auto serialize_camera_t_rigs = [&](){
+    json root;
+    for (size_t i = 0; i < camera_T_rigs_.size(); ++i) {
+      json camera_T_rig;
+      camera_T_rig["frozen"] = static_cast<bool>(frozen_camera_T_rigs_.count(i));
+      camera_T_rig["camera_T_rig"] = serialize_transformation(camera_T_rigs_[i]);
+      root.push_back(camera_T_rig);
+    }
+    return root;
+  };
+
+  const auto serialize_world_points = [&]() {
+    json root;
+    for (const auto &info : world_point_infos_) {
+      json wp;
+
+      wp["frame_id"] = info.observation_frame_id;
+      const auto v = observation_frames_[info.observation_frame_id].world_points[info.world_point_idx];
+      wp["world_point"] = serialize_vector(v);
+
+      root.push_back(wp);
+    }
+    return root;
+  };
+
+  const auto serialize_observations = [&](const auto &observations) {
+    json root;
+    for (const auto observation : observations) {
+      json obs;
+
+      obs["camera_id"] = observation.camera_id;
+      obs["world_point_id"] = observation.world_point_id;
+      obs["image_point"] = serialize_vector(observation.image_point); 
+
+      root.push_back(obs);
+    }
+
+    return root;
+  };
+
+  const auto serialize_observation_frames = [&]() {
+    json root;
+    for (const auto &observation_frame : observation_frames_) {
+      json obs;
+
+      obs["rig_T_world"] = serialize_transformation(observation_frame.rig_T_world);
+      obs["observations"] = serialize_observations(observation_frame.observations);
+
+      root.push_back(obs);
+    }
+    return root;
+  };
+  
+  json root;
+  root["camera_T_rigs"] = serialize_camera_t_rigs();
+  root["world_points"] = serialize_world_points();
+  root["observation_frames"] = serialize_observation_frames();
+
+  std::ofstream o(fname.c_str());
+  o << root;
+}
+
+void ExtrinsicsCalibrator::Parse(const std::string& fname) {
+  frozen_camera_T_rigs_.clear();
+  world_point_infos_.clear();
+  observation_frames_.clear();
+
+  json root;
+  {
+    std::ifstream in(fname.c_str());
+    in >> root;
+  }
+
+  const auto parse_transformation = [](const auto& root) {
+    Eigen::Matrix4f T;
+    for (size_t i = 0; i < root.size(); ++i) {
+      T.matrix()(i) = root[i].template  get<float>();
+    }
+    return Eigen::Affine3f(T);
+  };
+
+  const auto parse_vector = [](const auto& root, auto &v) {
+    for (size_t i = 0; i < root.size(); ++i) {
+      v(i) = root[i].template get<float>();
+    }
+  };
+
+  const auto parse_camera_t_rigs = [&](const auto& root) {
+    for (const auto &camera_T_rig_node : root) {
+      const bool frozen = camera_T_rig_node["frozen"].template get<bool>();
+      const auto camera_T_rig = parse_transformation(camera_T_rig_node["camera_T_rig"]);
+      AddCameraTRig(camera_T_rig, frozen);
+    }
+  };
+
+  const auto parse_observation_frames_transformations = [&](const auto& root) {
+    for (const auto &frame : root) {
+      const auto rig_T_world = parse_transformation(frame["rig_T_world"]);
+      AddObservationFrame(rig_T_world);
+    }
+  };
+
+  const auto parse_world_points = [&](const auto& root) {
+    for (const auto &wp : root) {
+      Point3D p;
+      parse_vector(wp["world_point"], p);
+      const auto frame_id = wp["frame_id"].template get<uint64_t>();
+      AddWorldPoint(frame_id, p);
+    }
+  };
+
+  const auto parse_observation_frames_observations = [&](const auto& root) {
+    for (const auto& frame : root) {
+      for (const auto& obs : frame["observations"]) {
+        const auto camera_id = obs["camera_id"].template get<uint64_t>();
+        const auto world_point_id = obs["world_point_id"].template get<uint64_t>();
+        Point2D p;
+        parse_vector(obs["image_point"], p);
+        AddObservation(camera_id, world_point_id, p);
+      }
+    }
+  };
+
+  parse_camera_t_rigs(root["camera_T_rigs"]);
+  parse_observation_frames_transformations(root["observation_frames"]);
+  parse_world_points(root["world_points"]);
+  parse_observation_frames_observations(root["observation_frames"]);
 }
