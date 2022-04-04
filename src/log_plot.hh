@@ -15,7 +15,7 @@ class PlotLog {
  private:
   PlotLog() {}
   std::tuple<std::vector<double>, std::vector<double>, std::string> GetData(
-      const std::string sel_plot);
+      const std::string& sel_plot);
 
   std::set<std::string> selected_plots_;
   std::mutex mutex_;

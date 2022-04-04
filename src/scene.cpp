@@ -31,7 +31,7 @@ void calibrator::InitGlDebugMessages() {
   inited = true;
 }
 
-std::string GetFileContent(const std::string fname) {
+std::string GetFileContent(const std::string& fname) {
   std::ifstream input(fname);
   std::stringstream ss;
   ss << input.rdbuf();
@@ -39,7 +39,7 @@ std::string GetFileContent(const std::string fname) {
 }
 
 std::optional<uint32_t> CompileShader(uint32_t shader_type,
-                                      const std::string source) {
+                                      const std::string& source) {
   unsigned int id = glCreateShader(shader_type);
 
   auto c_str_source = source.c_str();
@@ -463,7 +463,7 @@ void CalibrationScene::Render() { scene_.Render(); }
 
 void CalibrationScene::Draw() { DrawPoints(); }
 
-void CalibrationScene::AddPoints(const Points3D points, const Vector3& color) {
+void CalibrationScene::AddPoints(const Points3D& points, const Vector3& color) {
   VertexBuffer vbo;
   vbo.Create(points);
   VertexArray vao;

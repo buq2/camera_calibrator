@@ -52,7 +52,7 @@ void DisplayList(const std::string &name, const T &iterable,
 }
 
 std::tuple<std::vector<double>, std::vector<double>, std::string>
-PlotLog::GetData(const std::string sel_plot) {
+PlotLog::GetData(const std::string &sel_plot) {
   const auto &pd = data_[sel_plot];
   const auto &cb = pd.points;
   std::vector<double> x;

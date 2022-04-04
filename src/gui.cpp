@@ -299,8 +299,8 @@ void Image::Display() {
   p_->widget_space_ = y_after - y_before;
 }
 
-float Image::MousePosOnImageX() { return p_->mouse_pos_on_image_.x; }
-float Image::MousePosOnImageY() { return p_->mouse_pos_on_image_.y; }
+float Image::MousePosOnImageX() const { return p_->mouse_pos_on_image_.x; }
+float Image::MousePosOnImageY() const { return p_->mouse_pos_on_image_.y; }
 
 float GetGrayVal(const cv::Mat& img, float x, float y) {
   y = std::max<float>(std::min<float>(y, static_cast<float>(img.rows - 1)),

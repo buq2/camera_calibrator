@@ -241,10 +241,11 @@ void ExtrinsicsCalibrator::Optimize() {
   }
 }
 
-Eigen::Affine3f ExtrinsicsCalibrator::GetCameraTRig(const size_t id) {
+Eigen::Affine3f ExtrinsicsCalibrator::GetCameraTRig(const size_t id) const {
   return camera_T_rigs_[id];
 }
 
-Eigen::Affine3f ExtrinsicsCalibrator::GetObservationFrame(const size_t id) {
+Eigen::Affine3f ExtrinsicsCalibrator::GetObservationFrame(
+    const size_t id) const {
   return observation_frames_[id].rig_T_world;
 }

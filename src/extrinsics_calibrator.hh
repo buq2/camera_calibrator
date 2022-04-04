@@ -10,12 +10,12 @@ class ExtrinsicsCalibrator {
   /// \return Camera ID
   size_t AddCameraTRig(const Eigen::Affine3f &camera_T_rig,
                        const bool freeze = false);
-  Eigen::Affine3f GetCameraTRig(const size_t id);
+  Eigen::Affine3f GetCameraTRig(const size_t id) const;
 
   /// Add initial rig pose for a new observations
   /// \return Frame ID
   size_t AddObservationFrame(const Eigen::Affine3f &rig_T_world);
-  Eigen::Affine3f GetObservationFrame(const size_t id);
+  Eigen::Affine3f GetObservationFrame(const size_t id) const;
 
   /// Add new world point into observation frame
   /// \return World point ID

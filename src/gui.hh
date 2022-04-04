@@ -40,8 +40,8 @@ class Image {
   ~Image();
   void SetImage(const cv::Mat &in);
   void Display();
-  float MousePosOnImageX();
-  float MousePosOnImageY();
+  float MousePosOnImageX() const;
+  float MousePosOnImageY() const;
 
   /// Set callback which is called when ImGui objects can be drawn
   /// on top of the image.
@@ -54,7 +54,7 @@ class Image {
   ///   dl->AddCircleFilled({x, y}, 30, 0xFFFFFFFF);
   /// });
   /// \endcode
-  void SetObjectDrawCallback(const std::function<void()> fun) {
+  void SetObjectDrawCallback(const std::function<void()> &fun) {
     draw_fun_ = fun;
   }
   void ImageCoordinateToDrawCoordinate(float &x, float &y) const;

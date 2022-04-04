@@ -44,7 +44,9 @@ class CircularBuffer {
     head_ = 0;
     tail_ = 0;
   }
-  bool operator==(const CircularBuffer<T>& other) { return &other == this; }
+  bool operator==(const CircularBuffer<T>& other) const {
+    return &other == this;
+  }
 
   template <typename CB>
   class Iterator {

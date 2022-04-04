@@ -4,7 +4,6 @@
 #include <optional>
 #include "log_image.hh"
 #include "log_plot.hh"
-#include <optional>
 
 using namespace calibrator;
 
@@ -131,7 +130,7 @@ std::tuple<cv::Mat, cv::Mat> ConernerDetector::FilterSobel(
 
   cv::filter2D(img_gray, gx, -1, kernel_gx);
   cv::filter2D(img_gray, gy, -1, kernel_gx.t());
-  
+
   return {gx, gy};
 }
 
@@ -350,13 +349,6 @@ std::optional<std::array<float, 2>> EdgeOrientation(const Point2D& p,
   const auto w = angle.cols;
   const auto h = angle.rows;
 
-  LOG_POINT("x", p.x());
-  LOG_POINT("y", p.y());
-
-  if (p.x() > 195 && p.x() < 200 && p.y() > 177 && p.y() < 181) {
-    std::cout << "wehaa" << std::endl;
-  }
-
   assert(weight.cols == w);
   assert(weight.rows == h);
   assert(angle.channels() == 1);
@@ -373,7 +365,7 @@ std::optional<std::array<float, 2>> EdgeOrientation(const Point2D& p,
     auto* ptr_weight = weight.ptr<float>(i_y);
     for (int i_x = std::max(0, x - r); i_x < std::min(w, x + r); ++i_x) {
       auto a = ptr_angle[i_x];
-      
+
       // TODO: This is probably not needed as angles are already in range [0 pi]
       a += pi / 2.0f;
       if (a >= pi) {
@@ -389,7 +381,7 @@ std::optional<std::array<float, 2>> EdgeOrientation(const Point2D& p,
   }
 
   const auto modes = FindModesMeanShift(hist, 1);
-  
+
   if (modes.size() < 2) {
     // Only one mode or no modes at all, this can not be a corner
     return std::nullopt;
@@ -413,7 +405,7 @@ Points2D ConernerDetector::RefineCorners(const Points2D& corners,
                                          const GxGyAngleWeight& gxgyaw,
                                          const uint8_t radius) {
   Points2D out;
-  
+
   for (const auto& corner : corners) {
     const auto orientation =
         EdgeOrientation(corner, radius, gxgyaw.angle, gxgyaw.weight);

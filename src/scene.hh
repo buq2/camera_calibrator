@@ -52,6 +52,7 @@ class VertexArray {
 
 class Shader {
  public:
+  Shader() {}
   ~Shader() { Delete(); }
   bool Load(const std::string& vertex_shader,
             const std::string& fragment_shader);
@@ -162,7 +163,7 @@ class SceneCamera {
 
  private:
   void UpdateViewMatrix();
-  Matrix4 GetProjection(float fovy, float aspect, float near, float far);
+  static Matrix4 GetProjection(float fovy, float aspect, float near, float far);
 
  private:
   float pitch_{0.0f};
@@ -193,7 +194,7 @@ class Scene {
   Scene();
   SceneCamera& GetCamera() { return cam_; }
   void Render();
-  void SetDrawFunction(std::function<void()> draw_objects) {
+  void SetDrawFunction(const std::function<void()>& draw_objects) {
     draw_objects_ = draw_objects;
   };
 
@@ -212,7 +213,8 @@ class CalibrationScene {
  public:
   CalibrationScene();
   void Render();
-  void AddPoints(const Points3D points, const Vector3& color = {1.0, 1.0, 1.0});
+  void AddPoints(const Points3D& points,
+                 const Vector3& color = {1.0, 1.0, 1.0});
 
  private:
   void Draw();
