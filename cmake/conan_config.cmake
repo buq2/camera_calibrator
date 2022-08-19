@@ -12,6 +12,6 @@ else()
     conan_cmake_run(CONANFILE conanfile.txt
                     BASIC_SETUP
                     BUILD missing
-                    CONFIGURATION_TYPES "Release")
+                    PROFILE_AUTO ALL)
     set(CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}" ${CMAKE_MODULE_PATH})
 endif()
