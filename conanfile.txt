@@ -12,6 +12,9 @@
 
     # For serialization
     nlohmann_json/3.10.5
+
+    # Python
+    pybind11/[>2.0]
 [generators]
     cmake_find_package
 [options]

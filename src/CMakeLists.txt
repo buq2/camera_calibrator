@@ -101,6 +101,18 @@ target_link_libraries(test_common
     Catch2::Catch2
     )
 
+# Only create python bindings if Python executable was given
+IF (EXISTS ${PYTHON_EXECUTABLE})
+    FIND_PACKAGE(pybind11 REQUIRED)
+    pybind11_add_module(pycalibrator
+        binds.cpp
+        )
+    target_link_libraries(pycalibrator
+        PRIVATE
+        calibrator
+        )
+ENDIF()
+
 include(CTest)
 include(Catch)
 catch_discover_tests(test_calibrator)

@@ -7,10 +7,30 @@ Hope is to build faster and easier to use camera calibrator than what OpenCV has
 # Build
 
 ```
-cmake -S . -B build -A x64
+cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release
 # Or on MSVC command prompt 
 # cmake -S . -B build -G Ninja
 cmake --build build --parallel 12 --config Release
+```
+
+## Specific VS version 
+
+```
+cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release -G "Visual Studio 15 2017"
+cmake -S . -B build_debug -A x64 -DCMAKE_BUILD_TYPE=Debug -G "Visual Studio 15 2017"
+```
+
+# Debug build
+
+```
+cmake -S . -B build_debug -A x64 -DCMAKE_BUILD_TYPE=Debug
+cmake --build build_debug --parallel 12 --config Debug
+```
+
+# Build python bindings
+
+```
+CMAKE_BUILD_PARALLEL_LEVEL=8 CMAKE_GENERATOR="Visual Studio 15 2017" pip install -v -e .
 ```
 
 # Tests
