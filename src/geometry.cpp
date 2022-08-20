@@ -73,7 +73,10 @@ Matrix3 EstimateHomography(const Points1& p1, const Points2& p2) {
   // HZ2 (4.1) and (4.3) p.89 for 2D->2D case
   assert(p1.size() == p2.size());
   const auto n = p1.size();
-  Eigen::MatrixXf A(2 * n, 9);
+  // Using double for better accuracy.
+  // With float matrix, we fail to calibrate large (5MP)
+  // sensors
+  Eigen::MatrixXd A(2 * n, 9);
   for (int i = 0; i < n; ++i) {
     const auto row = i * 2;
     A.block<1, 3>(row, 0).setZero();
@@ -93,12 +96,12 @@ Matrix3 EstimateHomography(const Points1& p1, const Points2& p2) {
     A(row + 1, 8) = -p2[i].x();
   }
 
-  Eigen::JacobiSVD<Eigen::MatrixXf> svd_computer(A, Eigen::ComputeFullV);
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd_computer(A, Eigen::ComputeFullV);
   const auto h = svd_computer.matrixV().rightCols(1);
-  Matrix3 H;
+  Eigen::Matrix3d H;
   H << h(0), h(1), h(2), h(3), h(4), h(5), h(6), h(7), h(8);
 
-  return H;
+  return H.cast<float>();
 }
 
 Matrix3 EstimateHomography(const Points2D& p1, const Points3D& p2) {
