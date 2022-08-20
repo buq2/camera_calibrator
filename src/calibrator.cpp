@@ -6,6 +6,7 @@
 #include <opencv2/calib3d.hpp>
 #include "ceres/ceres.h"
 #include "ceres/rotation.h"
+#include "ceres/manifold.h"
 
 using namespace calibrator;
 
@@ -213,8 +214,7 @@ void Calibrator::Optimize(const std::vector<Points2D>& in_img_points,
       cost_functions.emplace_back(&errors.back(), ceres::DO_NOT_TAKE_OWNERSHIP);
       problem.AddResidualBlock(&cost_functions.back(), NULL, cam_intrinsics,
                                current_cam_q, current_cam_t, p_p3d[i_p].data());
-      problem.SetParameterization(current_cam_q,
-                                  new ceres::QuaternionParameterization);
+     problem.SetManifold(current_cam_q, new ceres::QuaternionManifold);
 
       // If 3D points are not moved, we can set it here
       problem.SetParameterBlockConstant(p_p3d[i_p].data());

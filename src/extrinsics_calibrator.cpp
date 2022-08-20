@@ -178,8 +178,7 @@ void ExtrinsicsCalibrator::Optimize() {
       // First time we encounter the quaternions, we need to set the quaternion
       // parameterization
       if (!camera_T_rig_configured.count(observation.camera_id)) {
-        problem.SetParameterization(current_q_camera_T_rig,
-                                    new ceres::QuaternionParameterization);
+        problem.SetManifold(current_q_camera_T_rig, new ceres::QuaternionManifold);
         camera_T_rig_configured.insert(observation.camera_id);
 
         if (frozen_camera_T_rigs_.count(observation.camera_id)) {
@@ -189,8 +188,7 @@ void ExtrinsicsCalibrator::Optimize() {
         }
       }
       if (!rig_T_world_configured.count(observation_frames_id)) {
-        problem.SetParameterization(current_q_rig_T_world,
-                                    new ceres::QuaternionParameterization);
+        problem.SetManifold(current_q_rig_T_world, new ceres::QuaternionManifold);
         rig_T_world_configured.insert(observation_frames_id);
       }
       if (!world_point_configured.count(observation.world_point_id)) {
