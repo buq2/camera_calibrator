@@ -5,6 +5,7 @@
 
 #include "extrinsics_calibrator.hh"
 #include "calibrator.hh"
+#include "geometry.hh"
 
 namespace pybind11 { namespace detail {
     template <typename T> struct type_caster<Eigen::Transform<T,3,2,0>> {
@@ -68,4 +69,18 @@ PYBIND11_MODULE(pycalibrator, pycalibrator) {
       .def("Serialize", &calibrator::ExtrinsicsCalibrator::Serialize, pybind11::arg("fname"))
       .def("Parse", &calibrator::ExtrinsicsCalibrator::Parse, pybind11::arg("fname"))
       ;
+
+    pycalibrator.def("EstimatePlaneFinite", &calibrator::EstimatePlaneFinite, pybind11::arg("p1"), pybind11::arg("p2"), pybind11::arg("p3"));
+    pycalibrator.def("PlaneNormal", &calibrator::PlaneNormal, pybind11::arg("plane"));
+    pycalibrator.def("RotationMatrixFromPlane", &calibrator::RotationMatrixFromPlane,
+        pybind11::arg("plane"), pybind11::arg("new_normal") = calibrator::Point3D::UnitZ());
+    pycalibrator.def("ProjectToPlane", &calibrator::ProjectToPlane, 
+        pybind11::arg("plane"), pybind11::arg("p"), pybind11::arg("projection_direction") = std::nullopt);
+    pycalibrator.def("EstimateHomography", pybind11::overload_cast<const calibrator::Points2D&, const calibrator::Points2D&>(&calibrator::EstimateHomography),
+        "Estimate homography", pybind11::arg("p1"), pybind11::arg("p2"));
+    pycalibrator.def("EstimateKFromHomographies", &calibrator::EstimateKFromHomographies, pybind11::arg("Hs"));
+    pycalibrator.def("RecoverExtrinsics", &calibrator::RecoverExtrinsics, 
+        "Recover extrinsics from inverted calibration matrix and homography", 
+        pybind11::arg("K_inv"), pybind11::arg("H"));
+    pycalibrator.def("FixRotationMatrix", &calibrator::FixRotationMatrix, pybind11::arg("R"));
 };
