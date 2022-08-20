@@ -53,6 +53,7 @@ PYBIND11_MODULE(pycalibrator, pycalibrator) {
         .def("Optimize", &calibrator::Calibrator::Optimize)
         .def("GetK", &calibrator::Calibrator::GetK)
         .def("GetDistortion", &calibrator::Calibrator::GetDistortion)
+        .def("ForceDistortionToConstant", &calibrator::Calibrator::ForceDistortionToConstant)
         ;
   
   pybind11::class_<calibrator::ExtrinsicsCalibrator>(pycalibrator, "ExtrinsicsCalibrator")

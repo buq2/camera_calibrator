@@ -91,9 +91,9 @@ enum {
   OFFSET_PY,
   OFFSET_K1,
   OFFSET_K2,
-  OFFSET_K3,
   OFFSET_P1,
   OFFSET_P2,
+  OFFSET_K3,
   NUM_INTRINSICS
 };
 
@@ -213,12 +213,21 @@ void Calibrator::Optimize(const std::vector<Points2D>& in_img_points,
       errors.emplace_back(p2d.x(), p2d.y());
       cost_functions.emplace_back(&errors.back(), ceres::DO_NOT_TAKE_OWNERSHIP);
       problem.AddResidualBlock(&cost_functions.back(), NULL, cam_intrinsics,
-                               current_cam_q, current_cam_t, p_p3d[i_p].data());
+                               current_cam_q, current_cam_t, p_p3d[i_p].data());      
      problem.SetManifold(current_cam_q, new ceres::QuaternionManifold);
 
       // If 3D points are not moved, we can set it here
       problem.SetParameterBlockConstant(p_p3d[i_p].data());
     }
+  }
+
+  if (constant_intrinsics_.size()) {
+    std::vector<int> constant_intrinsics;
+    for (const auto &idx : constant_intrinsics_) {
+      constant_intrinsics.push_back(idx);
+    }
+    auto* subset_manifold = new ceres::SubsetManifold(num_param_intrinsics, constant_intrinsics);
+    problem.SetManifold(cam_intrinsics, subset_manifold);
   }
 
   ceres::Solver::Options options;
@@ -243,4 +252,8 @@ void Calibrator::Optimize(const std::vector<Points2D>& in_img_points,
   dist_(2) = static_cast<float>(cam_intrinsics[OFFSET_P1]);
   dist_(3) = static_cast<float>(cam_intrinsics[OFFSET_P2]);
   dist_(4) = static_cast<float>(cam_intrinsics[OFFSET_K3]);
+}
+
+void Calibrator::ForceDistortionToConstant(const int distortion_idx) {
+  constant_intrinsics_.insert(distortion_idx + static_cast<int>(OFFSET_K1));
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hh"
+#include <set>
 
 namespace calibrator {
 
@@ -20,12 +21,14 @@ class Calibrator {
 
   Matrix3 GetK() const { return K_; }
   DynamicVector GetDistortion() const { return dist_; }
+  void ForceDistortionToConstant(const int distortion_idx);
 
  private:
   int width_;
   int height_;
   Matrix3 K_{Matrix3::Identity()};
   DynamicVector dist_{DynamicVector::Zero(5)};
+  std::set<int> constant_intrinsics_;
 };  // class Calibrator
 
 }  // namespace calibrator
