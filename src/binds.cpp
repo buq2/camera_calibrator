@@ -53,8 +53,12 @@ PYBIND11_MODULE(pycalibrator, pycalibrator) {
         .def("Estimate", &calibrator::Calibrator::Estimate, pybind11::arg("img_points"), pybind11::arg("world_points"))
         .def("Optimize", &calibrator::Calibrator::Optimize)
         .def("GetK", &calibrator::Calibrator::GetK)
+        .def("SetK", &calibrator::Calibrator::SetK, pybind11::arg("K"))
         .def("GetDistortion", &calibrator::Calibrator::GetDistortion)
+        .def("SetDistortion", &calibrator::Calibrator::SetDistortion, pybind11::arg("distortion"))
         .def("ForceDistortionToConstant", &calibrator::Calibrator::ForceDistortionToConstant)
+        .def("Undistort", &calibrator::Calibrator::Undistort, pybind11::arg("img_points"))
+        .def("Distort", &calibrator::Calibrator::Distort, pybind11::arg("normalized_points"))
         ;
   
   pybind11::class_<calibrator::ExtrinsicsCalibrator>(pycalibrator, "ExtrinsicsCalibrator")

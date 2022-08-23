@@ -21,8 +21,28 @@ class Calibrator {
 
   Matrix3 GetK() const { return K_; }
   DynamicVector GetDistortion() const { return dist_; }
+
+   /// Set K
+  /// \parma[in] K Calibration matrix
+  void SetK(const Matrix3& K) {K_ = K;};
+
+  /// Set distortion parameters
+  /// \param[in] dist Distortion parameters
+  void SetDistortion(const DynamicVector& dist) {dist_ = dist;};
+
+  /// Force some distortion parameters to constants. These will not be optimized
+  /// \param[in] distortion_idx Index of distortion parameter to be frozen/not optimized
   void ForceDistortionToConstant(const int distortion_idx);
 
+  /// Undistort points
+  /// \param[in] img_points Image points in pixels coordinates
+  /// \return Image points in normalized coordinates
+  Points2D Undistort(const Points2D &img_points);
+
+  /// Distort points
+  /// \param[in] normalized_points Normalized image points
+  /// \return Image points in pixel coordinates
+  Points2D Distort(const Points2D &normalized_points);
  private:
   int width_;
   int height_;

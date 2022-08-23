@@ -67,21 +67,102 @@ void Calibrator::Estimate(const std::vector<Points2D>& in_img_points,
   Optimize(in_img_points, in_world_points, qs, ts);
 }
 
-template <typename T>
-inline void Distort(const T& fx, const T& fy, const T& px, const T& py,
-                    const T& k1, const T& k2, const T& k3, const T& p1,
-                    const T& p2, const T& nx, const T& ny, T* image_x,
-                    T* image_y) {
-  T x = nx;
-  T y = ny;
-  T r2 = x * x + y * y;
-  T r4 = r2 * r2;
-  T r6 = r4 * r2;
-  T r_mult = 1.0 + k1 * r2 + k2 * r4 + k3 * r6;
-  T xd = x * r_mult + 2.0 * p1 * x * y + p2 * (r2 + 2.0 * x * x);
-  T yd = y * r_mult + 2.0 * p2 * x * y + p1 * (r2 + 2.0 * y * y);
-  *image_x = fx * xd + px;
-  *image_y = fy * yd + py;
+template <typename T1, typename T2>
+inline void DistortNormalized(
+                    const T1& k1, const T1& k2, const T1& k3, const T1& p1,
+                    const T1& p2, const T2& nx, const T2& ny, T2* normalized_x,
+                    T2* normalized_y) {
+  T2 x = nx;
+  T2 y = ny;
+  auto r2 = x * x + y * y;
+  auto r4 = r2 * r2;
+  auto r6 = r4 * r2;
+  auto r_mult = 1.0 + k1 * r2 + k2 * r4 + k3 * r6;
+  *normalized_x = x * r_mult + 2.0 * p1 * x * y + p2 * (r2 + 2.0 * x * x);
+  *normalized_y = y * r_mult + 2.0 * p2 * x * y + p1 * (r2 + 2.0 * y * y);
+}
+
+template <typename T1, typename T2>
+inline void DistortPixels(const T1& fx, const T1& fy, const T1& px, const T1& py,
+                    const T1& k1, const T1& k2, const T1& k3, const T1& p1,
+                    const T1& p2, const T2& nx, const T2& ny, T2* image_x,
+                    T2* image_y) {
+  T2 normalized_x, normalized_y;
+  DistortNormalized(k1, k2, k3, p1, p2, nx, ny, &normalized_x, &normalized_y);
+
+  *image_x = fx * normalized_x + px;
+  *image_y = fy * normalized_y + py;
+}
+
+struct DistortionError {
+  DistortionError(const double normalized_x_distorted, const double normalized_y_distorted,
+    const double k1, const double k2, const double k3, const double p1, const double p2)
+    :
+    normalized_x_distorted(normalized_x_distorted), normalized_y_distorted(normalized_y_distorted),
+    k1(k1), k2(k2), k3(k3), p1(p1), p2(p2)
+  {}
+
+  template <typename T>
+  bool operator()(const T* const normalized_x_undistorted, const T* const normalized_y_undistorted, T* residuals) const {
+    T normalized_x_distorted_opt, normalized_y_distorted_opt;
+    DistortNormalized(k1, k2, k3, p1, p2, *normalized_x_undistorted, *normalized_y_undistorted, &normalized_x_distorted_opt, &normalized_y_distorted_opt);
+    residuals[0] = normalized_x_distorted_opt - normalized_x_distorted;
+    residuals[1] = normalized_y_distorted_opt - normalized_y_distorted;
+    return true;
+  }
+
+  double normalized_x_distorted, normalized_y_distorted;
+  double k1,k2,k3,p1,p2;
+};
+
+Points2D Calibrator::Undistort(const Points2D &img_points)
+{
+  ceres::Problem::Options problem_options;
+  problem_options.cost_function_ownership = ceres::DO_NOT_TAKE_OWNERSHIP;
+  ceres::Solver::Options options;
+  options.max_num_iterations = 1000;
+  options.linear_solver_type = ceres::DENSE_QR;
+  options.minimizer_progress_to_stdout = false;
+  options.logging_type = ceres::SILENT;
+  ceres::Solver::Summary summary;
+
+  Matrix3 K_inv = K_.inverse();
+
+  Points2D out;
+  for (const auto &p : img_points) {
+    ceres::Problem problem(problem_options);
+
+    // Convert pixel valued coordinates to normalized coordinates
+    const auto w = K_inv(2,0)*p.x() + K_inv(2,1)*p.y() + K_inv(2,2);
+    double x = (K_inv(0,0)*p.x() + K_inv(0,1)*p.y() + K_inv(0,2))/w;
+    double y = (K_inv(1,0)*p.x() + K_inv(1,1)*p.y() + K_inv(1,2))/w;
+    // x and y will be distorted normalized coordinates
+    
+    // Create optimization problem where we apply distortion to coordinates under optimization.
+    // Goal is to find coordinates to which distortion can be applied and we get the
+    // original distorted points -> optimized coordinates are the undistorted coordinates
+    // We start by using original distorted coordinates as first guess for undistorted coordinates 
+    problem.AddResidualBlock(new ceres::AutoDiffCostFunction<DistortionError, 2, 1, 1>(
+      new DistortionError(x, y, dist_(0), dist_(1), dist_(4), dist_(2), dist_(3))), 
+      nullptr, &x, &y);
+
+    ceres::Solve(options, &problem, &summary);
+
+    out.emplace_back(x, y);
+  }
+  
+  return out;
+}
+
+Points2D Calibrator::Distort(const Points2D &normalized_points)
+{
+  Points2D out;
+  for (const auto &p : normalized_points) {
+    float x,y;
+    DistortPixels(K_(0,0), K_(1,1), K_(0,2), K_(1,2), dist_(0), dist_(1), dist_(4), dist_(2), dist_(3), p.x(), p.y(), &x, &y);
+    out.emplace_back(x,y);
+  }
+  return out;
 }
 
 enum {
@@ -127,7 +208,7 @@ struct ReprojectionError {
 
     // Apply distortion
     T pred_x, pred_y;
-    Distort(fx, fy, px, py, k1, k2, k3, p1, p2, xn, yn, &pred_x, &pred_y);
+    DistortPixels(fx, fy, px, py, k1, k2, k3, p1, p2, xn, yn, &pred_x, &pred_y);
 
     residuals[0] = pred_x - meas_x;
     residuals[1] = pred_y - meas_y;
