@@ -1,11 +1,14 @@
 from typing import Union, List, Tuple
 
 import cv2
+import numpy as np
+import pycalibrator
 from numpy.typing import DTypeLike
 
 from .calibration_helpers import *
-from .cam_calibration import CamCalibration, CamFrameCalibrationData
+from .cam_calibration import CamCalibration, CamFrameCalibrationData, CamCalibrationData
 from .origin_updater import OriginUpdater
+from scipy.spatial.transform import Rotation
 
 
 class SystemCalibration:
@@ -15,6 +18,11 @@ class SystemCalibration:
 
     def __init__(self):
         self.cams = []
+        # rig_T_cam for each cam
+        self.rig_T_cam = {}
+
+    def set_rig_T_cam(self, cam_name: AnyStr, rig_T_cam: DTypeLike):
+        self.rig_T_cam[cam_name] = rig_T_cam
 
     def add_cam(self, cam: CamCalibration):
         """ Add CamCalibration object"""
@@ -241,3 +249,130 @@ class SystemCalibration:
             except Exception as e:
                 print('Failed to load origin changes for cam', cam.name, str(e))
 
+    def get_transformation_between_cams_direct(self, cam1_name, cam2_name):
+        """ Calculate average transformation between cameras. Only uses
+        frames where points can be seen between cams. """
+
+        cam1 = self.get_cam(cam1_name)
+        cam2 = self.get_cam(cam2_name)
+
+        t_sum = np.zeros((3,1))
+        Rs = []
+        for ts in cam1.get_frame_system_timestamps():
+            # Try to get cam positions for both cam1 and cam2
+            cam2_T_world, diff2_s = cam2.get_cam_position_near_timestamp(ts)
+            if cam2_T_world is None:
+                continue
+            cam2_T_world = np.vstack([cam2_T_world, [0, 0, 0, 1]])
+
+            cam1_T_world, diff1_s = cam1.get_cam_position_near_timestamp(ts)
+            cam1_T_world = np.vstack([cam1_T_world, [0, 0, 0, 1]])
+
+            # Transformation between cams
+            cam1_T_cam2 = cam1_T_world @ np.linalg.pinv(cam2_T_world)
+
+            # Just take the translation and rotation vector
+            t = cam1_T_cam2[0:3, -1]
+            R = cam1_T_cam2[0:3, 0:3]
+
+            # Sum translations, append rotations into a list
+            t_sum += t.reshape((3,1))
+            Rs.append(Rotation.from_matrix(R))
+
+        if len(Rs) == 0:
+            return None
+
+        # Average translation is ok (or should we take the median?)
+        t_avg = t_sum / len(Rs)
+        # Average rotations (I think this uses slerp)
+        R_avg = Rotation.mean(Rotation.concatenate(Rs)).as_matrix()
+
+        return np.hstack([R_avg, t_avg])
+
+    def calculate_rig_T_cam_from_anchor(self, cam1_name:AnyStr, cam2_name:AnyStr):
+        rig_T_cam1 = self.rig_T_cam[cam1_name]
+        cam1_T_cam2 = self.get_transformation_between_cams_direct(cam1_name, cam2_name)
+        cam1_T_cam2 = np.vstack([cam1_T_cam2,[0,0,0,1]])
+        rig_T_cam2 = rig_T_cam1 @ cam1_T_cam2
+        self.rig_T_cam[cam2_name] = rig_T_cam2
+
+    def calibrate_extrinsics(self):
+        """ Calibrate extrinsics of all cams """
+
+        # Gather all timestamps
+        all_tss = []
+        for cam in self.cams:
+            tss = cam.get_frame_system_timestamps()
+            all_tss.extend(tss)
+
+        # Remove timstamps too close together
+        threshold = CamCalibrationData.max_time_diff_seconds
+        all_tss.sort()
+        all_tss_seconds = np.array([ts.timestamp() for ts in all_tss])
+        diff = np.empty(all_tss_seconds.shape)
+        diff[0] = np.inf  # always retain the 1st element
+        diff[1:] = np.diff(all_tss_seconds)
+        mask = diff > threshold
+        all_tss = np.array(all_tss)[mask]
+
+        extcalib = pycalibrator.ExtrinsicsCalibrator()
+
+        for cam in self.cams:
+            rig_T_cam = self.rig_T_cam[cam.name]
+            cam_T_rig = np.linalg.pinv(rig_T_cam)
+            extcalib.AddCameraTRig(cam_T_rig)
+
+        def get_rig_T_world(ts):
+            for cam in self.cams:
+                cam_T_world, _ = cam.get_cam_position_near_timestamp(ts)
+                if cam_T_world is None:
+                    continue
+                cam_T_world = np.vstack([cam_T_world,[0,0,0,1]])
+
+                rig_T_cam = self.rig_T_cam[cam.name]
+                rig_T_world = rig_T_cam @ cam_T_world
+
+                # TODO: We could average out the transformations from all cams
+                return rig_T_world
+
+        for ts in all_tss:
+            rig_T_world = get_rig_T_world(ts)
+            frame_id = extcalib.AddObservationFrame(rig_T_world)
+
+            world_point_ids = {} # tuple of world point coordinates -> id
+            for cam_id, cam in enumerate(self.cams):
+                data, diff_s = cam.get_corner_data_near_timestamp(ts)
+                if data is None:
+                    # No data from this cam in this frame
+                    continue
+
+                print(f'Frame {frame_id}, cam {cam_id} adding {len(data.rx)} points')
+
+                # Undistort points
+                cal = pycalibrator.Calibrator(cam.width, cam.height)
+                cal.SetK(cam.K)
+                cal.SetDistortion(cam.distortion_coefficients)
+                px_undistorted = cal.Undistort([p for p in np.vstack([data.px, data.py]).T])
+                px_undistorted = np.array(px_undistorted)
+
+                # Add each of the points
+                for p_idx in range(len(data.rx)):
+                    rx = data.rx[p_idx]
+                    ry = data.ry[p_idx]
+                    world_point = (rx, ry, 0)
+                    if world_point in world_point_ids:
+                        world_point_id = world_point_ids[world_point]
+                    else:
+                        world_point_id = extcalib.AddWorldPoint(frame_id, np.array(world_point).reshape([3,1]))
+                        world_point_ids[world_point] = world_point_id
+                    px = px_undistorted[p_idx, 0] # data.px[p_idx]
+                    py = px_undistorted[p_idx, 1] # data.py[p_idx]
+                    extcalib.AddObservation(cam_id, world_point_id, np.array([px, py]))
+
+        extcalib.Optimize()
+
+        # Set optimized rig_T_cam
+        for cam_id, cam in enumerate(self.cams):
+            cam_T_rig = extcalib.GetCameraTRig(cam_id)
+            rig_T_cam = np.linalg.pinv(cam_T_rig)
+            self.rig_T_cam[cam.name] = rig_T_cam

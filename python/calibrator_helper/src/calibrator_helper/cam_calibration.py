@@ -156,7 +156,7 @@ class CamCalibration:
         return self.corner_points.get_corner_data_near_timestamp(ts)
 
     def get_cam_position_near_timestamp(self, system_ts: datetime.datetime) -> DTypeLike:
-        """ Get camera position near system timestamp """
+        """ Get camera position (cam_T_world) near system timestamp """
         data, diff_s = self.get_corner_data_near_timestamp(system_ts)
         if data is None:
             return None, None
