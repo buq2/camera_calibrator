@@ -43,6 +43,7 @@ void ExtrinsicsCalibrator::AddObservation(const size_t camera_id,
   observation.image_point = image_point;
   observation.world_point_idx = world_point_info.world_point_idx;
   observation.world_point_id = world_point_id;
+  observation.cost = std::numeric_limits<double>::quiet_NaN();
   observation_frames_[world_point_info.observation_frame_id]
       .observations.push_back(observation);
 }
@@ -145,14 +146,17 @@ void ExtrinsicsCalibrator::Optimize() {
   errors.reserve(num_errors);
   cost_functions.reserve(num_errors);
 
+  // For saving final cost
+  std::vector<std::tuple<ObservationFrame::Observation*, ceres::ResidualBlockId>> block_ids;
+
   std::set<size_t> camera_T_rig_configured;
   std::set<size_t> rig_T_world_configured;
   std::set<size_t> world_point_configured;
   for (size_t observation_frames_id = 0;
        observation_frames_id < observation_frames_.size();
        ++observation_frames_id) {
-    const auto &frame = observation_frames_[observation_frames_id];
-    for (const auto &observation : frame.observations) {
+    auto &frame = observation_frames_[observation_frames_id];
+    for (auto &observation : frame.observations) {
       const auto &p2d = observation.image_point;
       const auto &p3d = frame.world_points[observation.world_point_idx];
 
@@ -174,6 +178,7 @@ void ExtrinsicsCalibrator::Optimize() {
                                current_q_rig_T_world, current_t_rig_T_world,
                                current_q_camera_T_rig, current_t_camera_T_rig,
                                current_p3d);
+      block_ids.emplace_back(&observation, block_id);
 
       // First time we encounter the quaternions, we need to set the quaternion
       // parameterization
@@ -209,6 +214,15 @@ void ExtrinsicsCalibrator::Optimize() {
 
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
+
+  // Update costs for each observation
+  for (auto &[observation_ptr, block_id] : block_ids) {
+    constexpr bool apply_loss_function = true;
+    problem.EvaluateResidualBlockAssumingParametersUnchanged(block_id, 
+        apply_loss_function, 
+        &observation_ptr->cost,
+        nullptr, nullptr);
+  }
 
   // Update parameters
   for (size_t i = 0; i < num_cameras; ++i) {
@@ -300,6 +314,7 @@ void ExtrinsicsCalibrator::Serialize(const std::string& fname) const {
       obs["camera_id"] = observation.camera_id;
       obs["world_point_id"] = observation.world_point_id;
       obs["image_point"] = serialize_vector(observation.image_point); 
+      obs["cost"] = observation.cost;
 
       root.push_back(obs);
     }

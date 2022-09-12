@@ -52,6 +52,7 @@ class ExtrinsicsCalibrator {
       size_t world_point_idx;
       size_t world_point_id;
       Point2D image_point;
+      double cost{0.0};
     };
     std::vector<Observation, Eigen::aligned_allocator<Observation> >
         observations;
