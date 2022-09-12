@@ -16,7 +16,7 @@ def get_timestamp_from_filename(fname: AnyStr):
     # Separete into date and time, as "parse" could not handle
     # these both at once
     date = timestamp[0:8]
-    time = timestamp[8:]
+    time = timestamp[8:8+13]
     # Parse
     d1 = parse(date, fuzzy=True)
     d2 = parse(time, fuzzy=True)
@@ -25,10 +25,12 @@ def get_timestamp_from_filename(fname: AnyStr):
     return d1
 
 
-def estimate_calibration_grid_size(data: "CamFrameCalibrationData"):
+def estimate_calibration_grid_size(data: "CamFrameCalibrationData", res=0.0001):
     """ Estimate calibration grid rectangle size """
-    rx = np.unique(data.rx)
-    ry = np.unique(data.ry)
+    rx = np.round(data.rx/res)*res
+    ry = np.round(data.ry/res)*res
+    rx = np.unique(rx)
+    ry = np.unique(ry)
     rx = np.sort(rx)
     ry = np.sort(ry)
     return np.min(np.diff(rx)), np.min(np.diff(ry))

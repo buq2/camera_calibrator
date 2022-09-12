@@ -18,11 +18,14 @@ class CamFrameCalibrationData:
         self.ry: DTypeLike = np.array([])
         self.px: DTypeLike = np.array([])
         self.py: DTypeLike = np.array([])
+        self.px_ud: DTypeLike = np.array([])
+        self.py_ud: DTypeLike = np.array([])
 
 
 class CamCalibrationData:
     """ Holds calibration data from multiple frames for single camera """
-    max_time_diff_seconds = 0.05
+    #max_time_diff_seconds = 0.05
+    max_time_diff_seconds = 1.5
 
     def __init__(self):
         self.calibration_data = []
@@ -30,6 +33,9 @@ class CamCalibrationData:
     def number_of_frames(self) -> int:
         """ Return number of frames held """
         return len(self.calibration_data)
+
+    def get_frame_data(self, idx):
+        return self.calibration_data[idx]
 
     def add_frame(self, camera_ts: datetime.datetime, data: CamFrameCalibrationData):
         """ Add frame calibration data with timestamp (in cam timeframe) """
@@ -76,6 +82,20 @@ class CamCalibration:
         self.new_origin_changes = []
         self.corner_points = CamCalibrationData()
 
+    def calculate_undistorted_points(self):
+
+        cal = pycalibrator.Calibrator(self.width, self.height)
+        cal.SetK(self.K)
+        cal.SetDistortion(self.distortion_coefficients)
+
+        for idx in range(self.corner_points.number_of_frames()):
+            data = self.corner_points.get_frame_data(idx)['data']
+
+            p_undistorted = cal.Undistort([p for p in np.vstack([data.px, data.py]).T])
+            p_undistorted = np.array(p_undistorted)
+            data.px_ud = p_undistorted[:, 0]
+            data.py_ud = p_undistorted[:, 1]
+
     def serialize_origin_changes(self, fname: AnyStr):
         """ Serialize origin changes to a file.
         Origin changes are modifications to original rx,ry data"""
@@ -103,6 +123,11 @@ class CamCalibration:
                                          pos_y: List[float]):
         """ Set new origin and rotation (new x- and y-axis) for frame with certain timestamp """
         # Add new origin set to array for serialization
+
+        if np.array_equal(pos_x, pos_y) or np.array_equal(pos_x, new_origin) or np.array_equal(pos_y, new_origin):
+            print('Got same x/y/origin, can not calculate transformation')
+            return
+
         self.new_origin_changes.append({
             'system_ts': system_ts,
             'new_origin': new_origin,
@@ -161,26 +186,46 @@ class CamCalibration:
         if data is None:
             return None, None
 
-        px = data.px
-        py = data.py
+        px = data.px_ud
+        py = data.py_ud
         rx = data.rx
         ry = data.ry
 
         imgp = np.vstack([px, py]).T
         realp = np.vstack([rx, ry]).T
         H = pycalibrator.EstimateHomography(realp, imgp)
-        R, t = pycalibrator.RecoverExtrinsics(self.K_inv, H)
+        K_inv = np.eye(3, dtype=float) #self.K_inv, no need to use real K_inv as we have calibrated points
+        R, t = pycalibrator.RecoverExtrinsics(K_inv, H)
         return np.hstack([R, t.reshape([3, 1])]), diff_s
+
+    def shift_grid_by_square(self, system_ts: datetime.datetime, shift_xy: DTypeLike):
+        cor_data, _ = self.get_corner_data_near_timestamp(system_ts)
+        grid = estimate_calibration_grid_size(cor_data)
+        rx = grid[0] * shift_xy[0]
+        ry = grid[1] * shift_xy[1]
+
+        self.set_new_real_origin_and_rotation(system_ts, [rx, ry], [rx+grid[0], ry], [rx, ry+grid[1]])
+
+    def get_calibration_point_distribution(self, n_bins = 50):
+        """ Visualize distribution of calibration points in image plane """
+
+        x_bins = np.linspace(0, self.width, n_bins+1)
+        y_bins = np.linspace(0, self.height, n_bins+1)
+        counts = np.zeros((n_bins,n_bins))
+        for points in self.corner_points.calibration_data:
+            x = points['data'].px
+            y = points['data'].py
+            c, _, _ = np.histogram2d(x,y,[x_bins, y_bins])
+            counts += c
+        return counts
 
     def get_visualization_image(self, system_ts: datetime.datetime, scale: float = 1.0) -> DTypeLike:
         """ Get visualization image near system timestamp """
         img_name, _ = self.get_img_fname_closest_to_system_timestamp(system_ts)
+        if img_name is None:
+            return None
 
-        if not os.path.exists(img_name):
-            # Maybe just the direct image name without path
-            img_fname = os.path.join(self.image_directory, img_name.strip())
-        else:
-            img_fname = img_name
+        img_fname = img_name
 
         img = cv2.imread(img_fname, -1)  # -1 for 16bit/original
         img = (img / 6).astype(np.uint8)  # to uint8 with scaling
@@ -196,6 +241,8 @@ class CamCalibration:
         px = cor_data.px
         py = cor_data.py
 
+        grid = estimate_calibration_grid_size(cor_data)
+
         def draw_axis():
             """ Draw axis near origin """
 
@@ -208,7 +255,6 @@ class CamCalibration:
                 return idx
 
             # Try to draw axis
-            grid = estimate_calibration_grid_size(cor_data)
             idx_orig = find_index((0, 0))
             idx_pos_x = find_index((grid[0], 0))
             idx_pos_y = find_index((0, grid[1]))
@@ -216,22 +262,24 @@ class CamCalibration:
             pos_x = (int(px[idx_pos_x]), int(py[idx_pos_x]))
             pos_y = (int(px[idx_pos_y]), int(py[idx_pos_y]))
             thickness = 6
-            cv2.line(img, orig, pos_x, (255, 255, 0), thickness)
-            cv2.line(img, orig, pos_y, (255, 0, 255), thickness)
+            cv2.line(img, orig, pos_x, (0, 255, 0), thickness)
+            cv2.line(img, orig, pos_y, (255, 255, 0), thickness)
 
         draw_axis()
 
         for idx in range(len(px)):
+            if idx % 2:
+                continue
             pos_px = int(px[idx])
             pos_py = int(py[idx])
 
-            pos_rx = rx[idx]
-            pos_ry = ry[idx]
+            pos_rx = np.round(rx[idx]/grid[0])
+            pos_ry = np.round(ry[idx]/grid[1])
 
             center = (pos_px, pos_py)
             cv2.circle(img, center, 4, (0, 0, 255), 1)
-            cv2.putText(img, "{:0.0f}, {:0.0f}".format(pos_rx, pos_ry), center, cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                        (255, 0, 0), 2,
+            cv2.putText(img, "({:0.0f},{:0.0f})".format(pos_rx, pos_ry), center, cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                        (255, 0, 255), 2,
                         cv2.LINE_AA)
 
         if scale != 1.0:
@@ -263,3 +311,4 @@ class CamCalibration:
         self.K = calibrator.GetK()
         self.K_inv = np.linalg.inv(self.K)
         self.distortion_coefficients = calibrator.GetDistortion()
+        self.calculate_undistorted_points()

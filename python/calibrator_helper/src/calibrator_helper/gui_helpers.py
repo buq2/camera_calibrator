@@ -12,12 +12,12 @@ class MouseClickData:
         self.click_posses = []
         self.click_callback_fun = None
 
-    def add_click(self, x: float, y: float):
+    def add_click(self, x: float, y: float, button=None):
         """ Add new click location from window """
         self.click_posses.append([x, y])
 
         if self.click_callback_fun is not None:
-            self.click_callback_fun(x, y)
+            self.click_callback_fun(x, y, button=button)
 
     def get_last_click_position(self) -> List[float]:
         """ Return lastest click position """
@@ -36,15 +36,15 @@ class DisplayMouseClickLocation:
         self.last_click = None
         self.title = ""
         if mouse_click_data is not None:
-            mouse_click_data.click_callback_fun = lambda x, y: self.click(x, y)
+            mouse_click_data.click_callback_fun = lambda x, y, button: self.click(x, y, button)
 
-    def click(self, x: float, y: float):
+    def click(self, x: float, y: float, button=None):
         """ Called when image is clicked """
         self.last_click = (x, y)
         self.draw()
 
         if self.click_callback is not None:
-            self.click_callback(x, y)
+            self.click_callback(x, y, button)
 
     def draw(self):
         """ Redraw image, last click location and title of the image """
@@ -71,8 +71,8 @@ def window_click_event(event, x: float, y: float, flags=None, userdata: MouseCli
     """ Called when opencv window is clicked """
     # checking for left mouse clicks
     if event == cv2.EVENT_LBUTTONDOWN:
-        userdata.add_click(x, y)
+        userdata.add_click(x, y, button=event)
 
     # checking for right mouse clicks
     if event == cv2.EVENT_RBUTTONDOWN:
-        userdata.add_click(x, y)
+        userdata.add_click(x, y, button=event)

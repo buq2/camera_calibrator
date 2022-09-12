@@ -54,19 +54,17 @@ class SystemCalibration:
             """ Find the closest seen calibration point to some real world point on a plane
             """
 
-            # TODO(buq2): Distort points
-
             # Project real world point to image plane
             rp = np.array([real_point[0], real_point[1], 0, 1]).reshape([4, 1])
-            pp = K @ cam_T_world[0:3, :] @ rp
+            pp = cam_T_world[0:3, :] @ rp
             pp /= pp[-1]
 
             # Find the closest pixel value point to the projected point
-            px = data.px
-            py = data.py
+            px = data.px_ud
+            py = data.py_ud
 
-            px = px - pp[0]
-            py = py - pp[1]
+            px = (px - pp[0]) * K[0,0]
+            py = (py - pp[1]) * K[1,1]
             d = np.sqrt(px * px + py * py)
 
             idx = np.argmin(d)
@@ -104,15 +102,15 @@ class SystemCalibration:
             def try_to_fix(real_point: Union[List, Tuple]):
                 closest_origin, dist_px = closest_projected_point(data2, real_point, cam2_T_world, cam2.K)
                 # TODO(buq2): Use arg for max error
-                if dist_px > 50:
+                if dist_px > 20:
                     return False
                 closest_pos_x, dist_px = closest_projected_point(data2, (real_point[0] + grid[0], real_point[1]),
                                                                  cam2_T_world, cam2.K)
-                if dist_px > 50:
+                if dist_px > 20:
                     return False
                 closest_pos_y, dist_px = closest_projected_point(data2, (real_point[0], real_point[1] + grid[1]),
                                                                  cam2_T_world, cam2.K)
-                if dist_px > 50:
+                if dist_px > 20:
                     return False
 
                 # Looks good, change origin and axis
@@ -133,6 +131,8 @@ class SystemCalibration:
                     print('Successfully fixed coordinate system (or did we?)')
                     return
 
+        scale_cam1 = 0.5
+        scale_cam2 = 0.5
         while (True):
             if idx > len(tss) and not at_least_one_bad:
                 # No bad frames, prevent infinite loop
@@ -151,9 +151,9 @@ class SystemCalibration:
                 # No pos for this timestamp
                 idx += next_shift
                 continue
-            cam1_t_world = np.vstack([cam1_T_world, [0, 0, 0, 1]])
+            cam1_T_world = np.vstack([cam1_T_world, [0, 0, 0, 1]])
 
-            cam1_T_cam2 = cam1_t_world @ np.linalg.pinv(cam2_T_world)
+            cam1_T_cam2 = cam1_T_world @ np.linalg.pinv(cam2_T_world)
 
             if cam2_T_cam1 is None:
                 # Set first known cam transformation
@@ -167,16 +167,27 @@ class SystemCalibration:
             pos_change_mm = np.linalg.norm(t_diff)
             if pos_change_mm > self.max_cam_center_difference_for_consistency_mm:
                 print(f'Possibly bad consistency between cams ({pos_change_mm:0.0f}mm). Please fix the origin and axis')
-                orig_updater1 = OriginUpdater(cam1, ts)
+                orig_updater1 = OriginUpdater(cam1, ts, scale=scale_cam1)
                 orig_updater1.start()
-                orig_updater2 = OriginUpdater(cam2, ts)
+                orig_updater2 = OriginUpdater(cam2, ts, orig_updater1, scale=scale_cam2)
                 orig_updater2.start()
+                orig_updater1.origin_updater_cam2 = orig_updater2
 
                 print('Press:')
                 print('esc - Stop processing image pairs')
                 print('d - next image')
                 print('a - previous image')
                 print('w - autofix based on prediction')
+                print('s - set as cam2_T_cam1')
+                print('j - shift one grid left')
+                print('l - shift one grid right')
+                print('i - shift one grid up')
+                print('k - shift one grid down')
+                print('1 - less zoom on cam 1')
+                print('2 - more zoom on cam 1')
+                print('3 - less zoom on cam 2')
+                print('4 - more zoom on cam 2')
+                print('p - print cam positions')
                 key = cv2.waitKey(0)
                 if key == 27:
                     # esc
@@ -187,6 +198,39 @@ class SystemCalibration:
                     next_shift = -1
                 elif chr(key % 255) == 'w':
                     autofix(ts, cam2_T_cam1)
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == 's':
+                    cam2_T_cam1 = np.linalg.pinv(cam1_T_cam2)
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == 'j':
+                    cam2.shift_grid_by_square(ts, [-1, 0])
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == 'l':
+                    cam2.shift_grid_by_square(ts, [1, 0])
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == 'i':
+                    cam2.shift_grid_by_square(ts, [0, 1])
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == 'k':
+                    cam2.shift_grid_by_square(ts, [0, -1])
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == '1':
+                    scale_cam1 *= 0.75
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == '2':
+                    scale_cam1 /= 0.75
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == '3':
+                    scale_cam2 *= 0.75
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == '4':
+                    scale_cam2 /= 0.75
+                    idx -= next_shift  # stay at same loc
+                elif chr(key % 255) == 'p':
+                    print('cam1_T_world',cam1.name)
+                    print(cam1_T_world)
+                    print('cam2_t_world',cam2.name)
+                    print(cam2_T_world)
                     idx -= next_shift  # stay at same loc
 
                 at_least_one_bad = True
@@ -317,10 +361,11 @@ class SystemCalibration:
 
         extcalib = pycalibrator.ExtrinsicsCalibrator()
 
-        for cam in self.cams:
+        for idx, cam in enumerate(self.cams):
             rig_T_cam = self.rig_T_cam[cam.name]
             cam_T_rig = np.linalg.pinv(rig_T_cam)
-            extcalib.AddCameraTRig(cam_T_rig)
+            freeze = idx == 0
+            extcalib.AddCameraTRig(cam_T_rig, freeze)
 
         def get_rig_T_world(ts):
             for cam in self.cams:
@@ -348,13 +393,6 @@ class SystemCalibration:
 
                 print(f'Frame {frame_id}, cam {cam_id} adding {len(data.rx)} points')
 
-                # Undistort points
-                cal = pycalibrator.Calibrator(cam.width, cam.height)
-                cal.SetK(cam.K)
-                cal.SetDistortion(cam.distortion_coefficients)
-                px_undistorted = cal.Undistort([p for p in np.vstack([data.px, data.py]).T])
-                px_undistorted = np.array(px_undistorted)
-
                 # Add each of the points
                 for p_idx in range(len(data.rx)):
                     rx = data.rx[p_idx]
@@ -365,11 +403,13 @@ class SystemCalibration:
                     else:
                         world_point_id = extcalib.AddWorldPoint(frame_id, np.array(world_point).reshape([3,1]))
                         world_point_ids[world_point] = world_point_id
-                    px = px_undistorted[p_idx, 0] # data.px[p_idx]
-                    py = px_undistorted[p_idx, 1] # data.py[p_idx]
+                    px = data.px_ud[p_idx] # data.px[p_idx]
+                    py = data.py_ud[p_idx] # data.py[p_idx]
                     extcalib.AddObservation(cam_id, world_point_id, np.array([px, py]))
 
         extcalib.Optimize()
+
+        extcalib.Serialize('optimized_results.json')
 
         # Set optimized rig_T_cam
         for cam_id, cam in enumerate(self.cams):

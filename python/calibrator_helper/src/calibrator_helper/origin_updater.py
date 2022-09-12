@@ -1,5 +1,5 @@
 import datetime
-from typing import Callable
+from typing import Callable, Union
 
 from .cam_calibration import CamCalibration
 from .gui_helpers import *
@@ -8,16 +8,17 @@ from .gui_helpers import *
 class OriginUpdater:
     """ Helper for updating calibration origin """
 
-    def __init__(self, cam: "CamCalibration", system_ts: datetime.datetime):
+    def __init__(self, cam: "CamCalibration", system_ts: datetime.datetime, origin_updater_cam2: Union["OriginUpdater", None] = None, scale=0.5):
         self.cam = cam
+        self.origin_updater_cam2 = origin_updater_cam2
         self.system_ts = system_ts
         self.click_data = None
         self.click_displayer = None
-        self.scale = 0.5
+        self.scale = scale
 
-    def set_next_callback(self, next_callback: Callable[[float, float], None]):
+    def set_next_callback(self, next_callback: Callable[[float, float, AnyStr], None]):
         """ Set which function should be called when image is clicked next time """
-        self.click_displayer.click_callback = lambda x, y: next_callback(x, y)
+        self.click_displayer.click_callback = lambda x, y, button: next_callback(x, y, button)
 
     def set_title(self, title: AnyStr):
         """ Set title displayed on top of the image """
@@ -27,6 +28,8 @@ class OriginUpdater:
         """ Start changing the origin """
         winname = self.cam.name
         img = self.cam.get_visualization_image(system_ts=self.system_ts, scale=self.scale)
+        if img is None:
+            img = np.zeros((10,10))
         cv2.imshow(winname, img)
         self.click_data = MouseClickData()
         self.click_displayer = DisplayMouseClickLocation(img, winname, self.click_data)
@@ -58,27 +61,31 @@ class OriginUpdater:
         closest_real_y = data.ry[closest_idx]
         return [closest_real_x, closest_real_y]
 
-    def recalculate(self):
+    def recalculate(self, update_also_cam2):
         """ Recalculate origin and rotation """
         current_origin = self.get_closest_real_point_to_image_point(self.origin)
         current_pos_x = self.get_closest_real_point_to_image_point(self.positive_x)
         current_pos_y = self.get_closest_real_point_to_image_point(self.positive_y)
         self.cam.set_new_real_origin_and_rotation(self.system_ts, current_origin, current_pos_x, current_pos_y)
 
+        if update_also_cam2 and self.origin_updater_cam2 is not None:
+            self.origin_updater_cam2.cam.set_new_real_origin_and_rotation(self.system_ts, current_origin, current_pos_x, current_pos_y)
+            self.origin_updater_cam2.start()
+
         # Restart = redraw the image with new coordinate system
         self.start()
 
-    def set_origin(self, x: float, y: float):
+    def set_origin(self, x: float, y: float, button=None):
         self.origin = [x, y]
         self.set_next_callback(self.set_positive_x)
         self.set_title("Click direction of positive X")
 
-    def set_positive_x(self, x: float, y: float):
+    def set_positive_x(self, x: float, y: float, button=None):
         self.positive_x = [x, y]
         self.set_next_callback(self.set_positive_y)
         self.set_title("Click direction of positive Y")
 
-    def set_positive_y(self, x: float, y: float):
+    def set_positive_y(self, x: float, y: float, button=None):
         self.positive_y = [x, y]
 
-        self.recalculate()
+        self.recalculate(button==cv2.EVENT_RBUTTONDOWN)
