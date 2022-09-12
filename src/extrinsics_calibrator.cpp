@@ -170,7 +170,7 @@ void ExtrinsicsCalibrator::Optimize() {
       cost_functions.emplace_back(&errors.back(), ceres::DO_NOT_TAKE_OWNERSHIP);
       auto loss_function = new ceres::LossFunctionWrapper(
           new ceres::HuberLoss(3.0f / 500.0f), ceres::TAKE_OWNERSHIP);
-      problem.AddResidualBlock(&cost_functions.back(), loss_function,
+      auto block_id = problem.AddResidualBlock(&cost_functions.back(), loss_function,
                                current_q_rig_T_world, current_t_rig_T_world,
                                current_q_camera_T_rig, current_t_camera_T_rig,
                                current_p3d);
@@ -394,4 +394,43 @@ void ExtrinsicsCalibrator::Parse(const std::string& fname) {
   parse_observation_frames_transformations(root["observation_frames"]);
   parse_world_points(root["world_points"]);
   parse_observation_frames_observations(root["observation_frames"]);
+}
+
+void ExtrinsicsCalibrator::RemoveObservationFrame(const size_t observation_frame_id)
+{
+  const auto num_world_points = observation_frames_[observation_frame_id].world_points.size();
+
+  // Remove the observation frame
+  observation_frames_.erase(observation_frames_.begin()+observation_frame_id);
+
+  // Decrement all world point ids on later frames
+  for (size_t frame_id = observation_frame_id; frame_id < observation_frames_.size(); ++frame_id) {
+    auto &of = observation_frames_[frame_id];
+    for (auto &o : of.observations) {
+      o.world_point_id -= num_world_points;
+    }
+  }
+
+  // Remove world points belonging to the frame
+  world_point_infos_.erase(std::remove_if(world_point_infos_.begin(), world_point_infos_.end(), 
+    [=](const auto &wp) {
+      return wp.observation_frame_id == observation_frame_id;
+    }), world_point_infos_.end());
+    
+  // Decrement all wps which index later frames
+  for (auto &wp : world_point_infos_) {
+    if (wp.observation_frame_id >= observation_frame_id) {
+      --wp.observation_frame_id;
+    }
+  }
+}
+
+void ExtrinsicsCalibrator::RemoveObservationFrames(const std::vector<size_t> observation_frame_ids)
+{
+  // Need to remove larger idx observation frames first -> no need to modify input idxs
+  std::vector<size_t> ids = observation_frame_ids;
+  std::sort(ids.begin(), ids.end(), std::greater());
+  for (const auto &id : ids) {
+    RemoveObservationFrame(id);
+  }
 }

@@ -72,6 +72,8 @@ PYBIND11_MODULE(pycalibrator, pycalibrator) {
       .def("Optimize", &calibrator::ExtrinsicsCalibrator::Optimize)
       .def("Serialize", &calibrator::ExtrinsicsCalibrator::Serialize, pybind11::arg("fname"))
       .def("Parse", &calibrator::ExtrinsicsCalibrator::Parse, pybind11::arg("fname"))
+      .def("RemoveObservationFrame", &calibrator::ExtrinsicsCalibrator::RemoveObservationFrame, pybind11::arg("observation_frame_id"))
+      .def("RemoveObservationFrames", &calibrator::ExtrinsicsCalibrator::RemoveObservationFrames, pybind11::arg("observation_frame_ids"))
       ;
 
     pycalibrator.def("EstimatePlaneFinite", &calibrator::EstimatePlaneFinite, pybind11::arg("p1"), pybind11::arg("p2"), pybind11::arg("p3"));

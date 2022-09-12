@@ -29,6 +29,14 @@ class ExtrinsicsCalibrator {
 
   void Serialize(const std::string& fname) const;
   void Parse(const std::string& fname);
+
+  /// Remove obesevation frame with certain ID
+  /// \parma[in] observation_frame_id Frame to remove
+  void RemoveObservationFrame(const size_t observation_frame_id);
+
+  /// Remove multiple observation frames
+  /// \param[in] observation_frame_ids Observation frames to remove
+  void RemoveObservationFrames(const std::vector<size_t> observation_frame_ids);
  private:
   std::vector<Eigen::Affine3f, Eigen::aligned_allocator<Eigen::Affine3f> >
       camera_T_rigs_;
