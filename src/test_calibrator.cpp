@@ -1,7 +1,8 @@
 #define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include "calibrator.hh"
 #include "data_generator.hh"
+#include <iostream>
 
 using namespace calibrator;
 

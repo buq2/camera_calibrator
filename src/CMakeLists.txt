@@ -34,7 +34,7 @@ FIND_PACKAGE(SDL2 REQUIRED)
 FIND_PACKAGE(GLEW REQUIRED)
 FIND_PACKAGE(imgui REQUIRED)
 FIND_PACKAGE(implot REQUIRED)
-SET(IMGUI_BINDINGS_DIR ${imgui_RES_DIRS}/bindings/)
+SET(IMGUI_BINDINGS_DIR ${imgui_INCLUDE_DIR}/../res/bindings/)
 
 add_library(gui
     gui.cpp gui.hh
@@ -76,21 +76,21 @@ TARGET_LINK_LIBRARIES(test_gui
 add_executable(test_calibrator
     test_calibrator.cpp)
 target_link_libraries(test_calibrator
-    Catch2::Catch2
+    Catch2::Catch2WithMain 
     calibrator
     )
 
 add_executable(test_extrinsics_calibrator
     test_extrinsics_calibrator.cpp)
 target_link_libraries(test_extrinsics_calibrator
-    Catch2::Catch2
+    Catch2::Catch2WithMain 
     calibrator
     )
 
 add_executable(test_geometry
     test_geometry.cpp)
 target_link_libraries(test_geometry
-    Catch2::Catch2
+    Catch2::Catch2WithMain 
     calibrator
     )
 
@@ -98,7 +98,7 @@ add_executable(test_common
     test_common.cpp)
 
 target_link_libraries(test_common
-    Catch2::Catch2
+    Catch2::Catch2WithMain 
     )
 
 # Only create python bindings if Python executable was given
