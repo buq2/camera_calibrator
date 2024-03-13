@@ -248,6 +248,7 @@ void ExtrinsicsCalibrator::Optimize() {
     q.y() = static_cast<float>(param_q_rig_T_world[i][2]);
     q.z() = static_cast<float>(param_q_rig_T_world[i][3]);
 
+    rig_T_world.linear() = q.normalized().toRotationMatrix().cast<float>();
     rig_T_world.translation() =
         Eigen::Vector3f{static_cast<float>(param_t_rig_T_world[i][0]),
                         static_cast<float>(param_t_rig_T_world[i][1]),
