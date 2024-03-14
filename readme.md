@@ -30,7 +30,7 @@ cmake --build build_debug --parallel 12 --config Debug
 # Build python bindings
 
 ```
-CMAKE_BUILD_PARALLEL_LEVEL=8 CMAKE_GENERATOR="Visual Studio 15 2017" pip install -v -e .
+CMAKE_BUILD_PARALLEL_LEVEL=8 CMAKE_GENERATOR="Visual Studio 17 2022" pip install -v -e .
 ```
 
 # Tests
