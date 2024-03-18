@@ -24,8 +24,8 @@ class CamFrameCalibrationData:
 
 class CamCalibrationData:
     """ Holds calibration data from multiple frames for single camera """
-    #max_time_diff_seconds = 0.05
-    max_time_diff_seconds = 1.5
+    max_time_diff_seconds = 0.05 # TODO
+    #max_time_diff_seconds = 1.5
 
     def __init__(self):
         self.calibration_data = []
@@ -135,9 +135,9 @@ class CamCalibration:
             'pos_y': pos_y
         })
 
-        new_origin = np.array(new_origin)
-        pos_x = np.array(pos_x)
-        pos_y = np.array(pos_y)
+        new_origin = np.array(new_origin, np.float64)
+        pos_x = np.array(pos_x, np.float64)
+        pos_y = np.array(pos_y, np.float64)
 
         frame_data, diff_s = self.get_corner_data_near_timestamp(system_ts)
         if diff_s > CamCalibration.max_time_diff_seconds:
@@ -311,4 +311,12 @@ class CamCalibration:
         self.K = calibrator.GetK()
         self.K_inv = np.linalg.inv(self.K)
         self.distortion_coefficients = calibrator.GetDistortion()
+        self.calculate_undistorted_points()
+
+    def set_k(self, K):
+        self.K = K
+        self.calculate_undistorted_points()
+    
+    def set_distortion_coefficients(self, dist):
+        self.distortion_coefficients = dist
         self.calculate_undistorted_points()

@@ -2,3 +2,6 @@ numpy
 pandas
 opencv-python
 scipy
+matplotlib
+beautifulsoup4
+lxml

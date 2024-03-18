@@ -268,6 +268,7 @@ class SystemCalibration:
             print('esc - Stop processing image pairs')
             print('d - next image')
             print('a - previous image')
+            print('w - print filenames')
             key = cv2.waitKey(0)
             if key == 27:
                 # esc
@@ -276,6 +277,14 @@ class SystemCalibration:
                 next_shift = 1
             elif chr(key % 255) == 'a':
                 next_shift = -1
+            elif chr(key % 255) == 'w':
+                next_shift = 0
+                img_name, _ = cam1.get_img_fname_closest_to_system_timestamp(ts)
+                print(img_name)
+                img_name, _ = cam2.get_img_fname_closest_to_system_timestamp(ts)
+                print(img_name)
+
+
             idx += next_shift
             print('---')
 
